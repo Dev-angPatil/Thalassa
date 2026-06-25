@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Thalassa - Kerala Coastal Digital Twin</title>
+  <link rel="stylesheet" href="/index.css">
+</head>
+<body>
+
+  <!-- Announcement Bar (Cohere Style) -->
+  <div style="background: var(--cohere-black); color: var(--on-dark); height: 36px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-family: var(--font-mono); letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+    <span>THALASSA DIGITAL TWIN PROTOTYPE — ACTIVE MONSOON KERALA GRID</span>
+  </div>
+
+  <!-- Header Navigation -->
+  <header>
+    <div class="container nav-bar">
+      <a href="#" class="nav-logo">THALASSA</a>
+      
+      <!-- Primary Toggle between Modes -->
+      <div class="view-switch">
+        <button id="mode-fisherman" class="switch-btn active">Fisherman Dashboard</button>
+        <button id="mode-conservationist" class="switch-btn">Conservation Dashboard</button>
+      </div>
+
+      <!-- Action Actions -->
+      <div class="nav-actions">
+        <button id="btn-fetch-live" class="btn-outline">Trigger Live API Fetch</button>
+        <span class="mono-label" style="font-size: 10px;">GRID CELL V1.0</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Dashboard Workspace -->
+  <main class="container">
+    <div class="dashboard-grid">
+      
+      <!-- Viewport Panel (Left) -->
+      <div class="viewport-panel">
+        
+        <!-- Controls overlay inside map HUD -->
+        <div class="map-hud-top">
+          <!-- Left: Overlay layer checkboxes -->
+          <div class="hud-group">
+            <div class="hud-panel">
+              <span class="mono-label" style="color: var(--ink);">Overlays</span>
+              <div class="layer-badge-list">
+                <button id="layer-sst" class="layer-badge active">SST</button>
+                <button id="layer-chl" class="layer-badge active">Chlorophyll</button>
+                <button id="layer-currents" class="layer-badge">Currents</button>
+                <button id="layer-mpa" class="layer-badge active">Conservation Zones</button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Right: Selected Port Selector -->
+          <div class="hud-group">
+            <div class="hud-panel">
+              <span class="mono-label" style="color: var(--ink);">Anchor Port</span>
+              <select id="port-selector" style="font-family: var(--font-body); font-size: 12px; padding: 4px 8px; border: 1px solid var(--hairline); border-radius: var(--radius-xs); background: white; outline: none; cursor: pointer;">
+                <option value="vizhinjam">Vizhinjam (Thiruvananthapuram)</option>
+                <option value="neendakara">Neendakara (Kollam)</option>
+                <option value="munambam" selected>Munambam (Ernakulam)</option>
+                <option value="beypore">Beypore (Kozhikode)</option>
+                <option value="azheekkal">Azheekkal (Kannur)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- The Map Canvas -->
+        <div class="map-container">
+          <canvas id="map-canvas"></canvas>
+        </div>
+
+        <!-- Timeline / Slider Panel -->
+        <div class="timeline-panel">
+          <div class="timeline-controls">
+            <button id="btn-play-pause" class="play-btn">
+              <!-- Play Icon SVG -->
+              <svg id="play-icon" width="12" height="12" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
+                <path d="M8 5V19L19 12L8 5Z"/>
+              </svg>
+              <!-- Pause Icon SVG -->
+              <svg id="pause-icon" style="display:none;" width="12" height="12" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
+                <path d="M6 19H10V5H6V19ZM14 5V19H18V5H14Z"/>
+              </svg>
+            </button>
+          </div>
+          <div class="timeline-slider-wrapper">
+            <span class="mono-label" id="timeline-date-label">June 24 (Day 175)</span>
+            <input type="range" id="timeline-slider" class="timeline-slider" min="1" max="365" value="175">
+            <span class="mono-label" style="color: var(--slate);">Dec 31</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Detail Sidebar Panel (Right) -->
+      <div class="sidebar-panel">
+        
+        <!-- Section 1: Dashboard Context Metrics -->
+        <div class="sidebar-section">
+          <div class="sidebar-title">
+            <h3 class="mono-label" style="color: var(--slate); font-weight: 700;">Active Perspective</h3>
+            <span id="perspective-badge" style="background: var(--pale-green); color: var(--deep-green); padding: 4px 8px; border-radius: var(--radius-xs); font-size: 11px; font-weight: 600;">FISHERMAN VIEW</span>
+          </div>
+          
+          <h2 id="main-perspective-heading" class="card-heading" style="margin-bottom: var(--space-xs);">Optimized Fishing & Catch Advisories</h2>
+          <p id="main-perspective-desc" class="caption">Real-time oceanographic routing system prioritizing harvest yields based on sea surface temperature and primary productivity chlorophyll values.</p>
+        </div>
+
+        <!-- Section 2: Selected Grid Cell / Detail Telemetry -->
+        <div class="sidebar-section">
+          <h3 class="mono-label" style="margin-bottom: var(--space-sm);">Telemetry Details</h3>
+          
+          <div class="info-card" id="telemetry-card">
+            <div class="info-card-header">
+              <span class="info-card-title" id="telemetry-coords">Hover or click grid cell</span>
+              <span id="cell-type-badge" class="mono-label" style="font-size: 10px;">--</span>
+            </div>
+            
+            <div style="margin: var(--space-sm) 0; height: 1px; background-color: var(--hairline);"></div>
+            
+            <div class="metric-row">
+              <div class="metric-box">
+                <span class="mono-label" style="font-size: 9px;">SST (°C)</span>
+                <div class="metric-num" id="telemetry-sst">--</div>
+              </div>
+              <div class="metric-box">
+                <span class="mono-label" style="font-size: 9px;">Chlorophyll (mg/m³)</span>
+                <div class="metric-num" id="telemetry-chl" style="color: var(--primary-color);">--</div>
+              </div>
+            </div>
+
+            <div class="metric-row">
+              <div class="metric-box">
+                <span class="mono-label" style="font-size: 9px;">Current Vector</span>
+                <div class="metric-num" id="telemetry-currents" style="font-size: 15px; color: var(--action-blue); font-weight: 600;">--</div>
+              </div>
+              <div class="metric-box">
+                <span class="mono-label" style="font-size: 9px;">Dist to Coast</span>
+                <div class="metric-num" id="telemetry-coast" style="font-size: 16px; color: var(--slate); font-weight: 600;">--</div>
+              </div>
+            </div>
+
+            <div class="metric-row">
+              <div class="metric-box">
+                <span class="mono-label" style="font-size: 9px;">Wind Forecast</span>
+                <div class="metric-num" id="telemetry-wind" style="font-size: 13px; color: var(--form-focus); font-weight: 600;">--</div>
+              </div>
+              <div class="metric-box">
+                <span class="mono-label" style="font-size: 9px;">Wave State</span>
+                <div class="metric-num" id="telemetry-wave" style="font-size: 13px; color: var(--coral); font-weight: 600;">--</div>
+              </div>
+            </div>
+
+            <div style="margin-top: var(--space-sm);">
+              <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 2px;">
+                <span style="font-weight: 500;">Fishing Favorability</span>
+                <span id="score-favorability-label" style="font-weight: 600;">--%</span>
+              </div>
+              <div class="gauge-container">
+                <div class="gauge-bar blue-bar" id="score-favorability-bar"></div>
+              </div>
+            </div>
+
+            <div style="margin-top: var(--space-sm);">
+              <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 2px;">
+                <span style="font-weight: 500;">Conservation Sensitivity</span>
+                <span id="score-sensitivity-label" style="font-weight: 600;">--%</span>
+              </div>
+              <div class="gauge-container">
+                <div class="gauge-bar coral-bar" id="score-sensitivity-bar"></div>
+              </div>
+            </div>
+
+            <div style="margin-top: var(--space-md);">
+              <span class="mono-label" style="font-size: 9px; margin-bottom: 4px; display: block;">12-Month Seasonal SST Trend (°C)</span>
+              <canvas id="mini-trend-chart" style="width: 100%; height: 50px; display: block; background: #fafafa; border: 1px solid var(--border-light); border-radius: var(--radius-xs);"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 3: Perspective-Specific Lists -->
+        <div class="sidebar-section" id="dynamic-list-section">
+          <h3 class="mono-label" id="dynamic-list-title" style="margin-bottom: var(--space-sm);">HIGH YIELD FISHING ZONES</h3>
+          <div class="card-list" id="dynamic-cards-list">
+            <!-- Populated dynamically by app.js -->
+          </div>
+        </div>
+
+        <!-- Section 4: Optimized Route details -->
+        <div class="sidebar-section" id="route-section" style="display:none;">
+          <h3 class="mono-label" style="margin-bottom: var(--space-sm);">Vessel Route Telemetry</h3>
+          <div class="info-card" style="border-left: 3px solid var(--action-blue);">
+            <div class="info-card-header">
+              <span class="info-card-title" id="route-title">Munambam to Target Grid</span>
+              <span class="status-dot blue"></span>
+            </div>
+            <p class="caption" style="margin: var(--space-xxs) 0 var(--space-sm) 0;">Route path recalculated dynamically to avoid active spawning bans and protected marine reserves.</p>
+            <div class="metric-row" style="margin-bottom:0;">
+              <div class="metric-box">
+                <span class="mono-label" style="font-size: 9px;">Total Distance</span>
+                <div class="metric-num" id="route-distance" style="color: var(--action-blue);">-- km</div>
+              </div>
+              <div class="metric-box">
+                <span class="mono-label" style="font-size: 9px;">Est Transit Time</span>
+                <div class="metric-num" id="route-time" style="color: var(--primary-color);">-- hrs</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Toast alert warnings container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Main scripts -->
+  <script type="module" src="/src/app.js"></script>
+</body>
+</html>

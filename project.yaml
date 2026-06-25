@@ -1,0 +1,34 @@
+name: Thalassa
+hackathon_fit_score: 7.7
+maturity: Gold
+status: Complete
+has_frontend: true
+tech_stack:
+- Node.js
+- Vanilla HTML5/CSS/JS
+- netcdfjs
+design_md_used: Cohere
+last_loop_run: '2026-06-25'
+hackathon: Build with Gemini XPRIZE
+team: Devang Patil
+tagline: High-Fidelity Coastal Digital Twin of Kerala
+domain: climate, ocean, ml
+tasks_completed:
+- Created submission folder
+- Generated thalassa_devpost_submission.md
+- Generated demo_script.md
+- Generated judging_checklist.md
+- Generated pitch_deck_outline.md
+- Generated build_instructions.md
+- Generated team.md
+- Configured .gitignore for submission/
+- Implemented client-side binary NetCDF parser integration
+- Integrated Open-Meteo Weather and Marine API forecasting
+- Rendered interactive map legends and scale bars directly on HTML5 Canvas
+tasks_remaining: []
+blockers: []
+second_brain_context: /home/deu/Second Brain/10 AI/Context/Coding Repos/Thalassa/Ctx - Thalassa Context.md
+notes: 'Domain: ai, ml, ocean'
+path: /home/deu/Coding Repos/Thalassa
+tier: Tier 1
+potential_winnings: 2000000
