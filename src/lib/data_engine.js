@@ -216,6 +216,17 @@ export function generateDigitalTwinGrid(dayOfYear, liveData = null) {
 
       fishingScore = Math.min(100, Math.max(0, isLand ? 0 : Math.round(fishingScore)));
 
+      // Calculate Matsya AI Risk & Advisory parameters
+      const matsyaAI = calculateMatsyaAIParams({
+        sst,
+        minDistanceToCoast,
+        isRestrictedZone,
+        activeMPA,
+        conservationScore,
+        fishingScore,
+        isDeepOcean
+      }, dayOfYear);
+
       grid.push({
         row: r,
         col: c,
@@ -233,12 +244,132 @@ export function generateDigitalTwinGrid(dayOfYear, liveData = null) {
         activeMPA,
         sensitivityReasons,
         favorabilityReasons,
-        minDistanceToCoast: parseFloat(minDistanceToCoast.toFixed(1))
+        minDistanceToCoast: parseFloat(minDistanceToCoast.toFixed(1)),
+        // Matsya AI core fields
+        rEco: matsyaAI.rEco,
+        riskLevel: matsyaAI.riskLevel,
+        advisoryLevel: matsyaAI.advisoryLevel,
+        eRisk: matsyaAI.eRisk,
+        bRisk: matsyaAI.bRisk,
+        oRisk: matsyaAI.oRisk,
+        aRisk: matsyaAI.aRisk,
+        vRisk: matsyaAI.vRisk,
+        waveHeight: parseFloat(matsyaAI.waveHeight.toFixed(2)),
+        windSpeed: parseFloat(matsyaAI.windSpeed.toFixed(1))
       });
     }
   }
 
   return grid;
+}
+
+/**
+ * Matsya Engine AI Core parameter calculator
+ * Synthesizes the Weighted Ecological Risk Score (R_eco) and Fishing Advisory Level.
+ */
+export function calculateMatsyaAIParams(cell, dayOfYear) {
+  if (!cell || cell.isLand) {
+    return {
+      rEco: 0,
+      riskLevel: 'Low',
+      advisoryLevel: 'Recommended',
+      eRisk: 0,
+      bRisk: 0,
+      oRisk: 0,
+      aRisk: 0,
+      vRisk: 0,
+      waveHeight: 0,
+      windSpeed: 0
+    };
+  }
+
+  // 1. Ecosystem Stability Risk (E_risk) = 100 - H_health_score
+  const healthScore = Math.max(0, Math.min(100, Math.round(
+    85 - (cell.minDistanceToCoast < 30 ? (30 - cell.minDistanceToCoast) * 0.8 : 0) - (cell.isRestrictedZone ? 5 : 0)
+  )));
+  const eRisk = 100 - healthScore;
+
+  // 2. Biodiversity Risk (B_risk) = 100 - BHI
+  const BHI = Math.max(0, Math.min(100, Math.round(
+    80 + (cell.activeMPA ? 12 : 0) - (cell.conservationScore > 50 ? 10 : 0)
+  )));
+  const bRisk = 100 - BHI;
+
+  // 3. Oceanographic Condition Risk (O_risk)
+  // O_risk = clip(0, 100, delta_T_sst * 10 + delta_H_wave * 15)
+  const seasonalWave = 1.2 + 2.0 * Math.max(0, Math.sin((dayOfYear - 150) * (2 * Math.PI / 365)));
+  const waveHeight = cell.isDeepOcean ? seasonalWave + 0.8 : seasonalWave;
+
+  const deltaT = Math.max(0, cell.sst - 28.0);
+  const deltaH = Math.max(0, waveHeight - 2.0);
+  const oRisk = Math.max(0, Math.min(100, Math.round(deltaT * 10 + deltaH * 15)));
+
+  // 4. Alert Incident Density Risk (A_risk) = min(100, N_critical_alerts * 25)
+  let nCriticalAlerts = 0;
+  if (waveHeight > 3.0) nCriticalAlerts += 2;
+  else if (waveHeight > 2.0) nCriticalAlerts += 1;
+  if (cell.isRestrictedZone) nCriticalAlerts += 1;
+  const aRisk = Math.min(100, nCriticalAlerts * 25);
+
+  // 5. Vessel Compliance Risk (V_risk) = min(100, N_non_compliant / N_total * 100)
+  const totalVessels = cell.isRestrictedZone ? 6 : (cell.minDistanceToCoast < 40 ? 10 : 3);
+  const nonCompliant = cell.isRestrictedZone ? 2 : 1;
+  const vRisk = totalVessels > 0 ? Math.min(100, Math.round((nonCompliant / totalVessels) * 100)) : 0;
+
+  // R_eco Weighted Calculation
+  const rEco = Math.round(0.30 * eRisk + 0.25 * bRisk + 0.20 * oRisk + 0.15 * aRisk + 0.10 * vRisk);
+
+  // Risk Classification
+  let riskLevel = 'Low';
+  if (rEco > 75) riskLevel = 'Critical';
+  else if (rEco > 50) riskLevel = 'High';
+  else if (rEco > 25) riskLevel = 'Moderate';
+
+  // Fishing Advisory Engine
+  // Wind Speed simulation (knots)
+  const baseWind = 12 + 15 * Math.max(0, Math.sin((dayOfYear - 140) * (2 * Math.PI / 365)));
+  const windSpeed = cell.isDeepOcean ? baseWind + 6 : baseWind;
+
+  let advisoryLevel = 'Recommended';
+  if (waveHeight > 4.0 || windSpeed > 30 || aRisk > 50) {
+    advisoryLevel = 'Avoid';
+  } else if (waveHeight > 2.5 || windSpeed > 20 || cell.fishingScore < 40) {
+    advisoryLevel = 'Caution';
+  }
+
+  return {
+    rEco,
+    riskLevel,
+    advisoryLevel,
+    eRisk,
+    bRisk,
+    oRisk,
+    aRisk,
+    vRisk,
+    waveHeight,
+    windSpeed
+  };
+}
+
+/**
+ * Mathematical spatial projection formula from global telemetry (Lat/Lng)
+ * to 2D canvas coordinates using linear spatial normalization.
+ * Western Longitude (lambda_min) = 72.0E, Eastern Longitude (lambda_max) = 76.0E
+ * Southern Latitude (phi_min) = 14.0N, Northern Latitude (phi_max) = 20.0N
+ */
+export function projectTelemetryToPercent(lat, lng) {
+  const lambdaMin = 72.0;
+  const lambdaMax = 76.0;
+  const phiMin = 14.0;
+  const phiMax = 20.0;
+
+  const xPercent = ((lng - lambdaMin) / (lambdaMax - lambdaMin)) * 100;
+  const yPercent = 100 - (((lat - phiMin) / (phiMax - phiMin)) * 100);
+
+  return {
+    xPercent: parseFloat(xPercent.toFixed(2)),
+    yPercent: parseFloat(yPercent.toFixed(2))
+  };
 }
 
 /**

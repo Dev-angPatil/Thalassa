@@ -4,7 +4,7 @@
  */
 
 import { KERALA_COASTLINE, FISHING_HARBORS, CONSERVATION_ZONES } from './data/kerala_spatial.js';
-import { generateDigitalTwinGrid, calculateOptimizedRoute } from './lib/data_engine.js';
+import { generateDigitalTwinGrid, calculateOptimizedRoute, projectTelemetryToPercent } from './lib/data_engine.js';
 import { fetchIncoisErddapData, fetchOpenMeteoForecast } from './lib/api_client.js';
 
 // Open-Meteo Cache & Debounce Globals
@@ -172,7 +172,7 @@ function init() {
     attributionControl: false
   }).setView([10.4, 76.0], 8);
 
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
     maxZoom: 18,
     minZoom: 6
   }).addTo(map);
@@ -298,6 +298,18 @@ function setupEventListeners() {
   // Leaflet Map events
   map.on('mousemove', handleMapMouseMove);
   map.on('click', handleMapClick);
+
+  // Hover glow coordinate updates for info-cards
+  document.addEventListener('mousemove', (e) => {
+    const cards = document.querySelectorAll('.info-card');
+    cards.forEach(card => {
+      const rect = card.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      card.style.setProperty('--mouse-x', `${x}px`);
+      card.style.setProperty('--mouse-y', `${y}px`);
+    });
+  });
 
   window.addEventListener('resize', handleResize);
 }
@@ -542,6 +554,7 @@ function updateTelemetryCard(cell) {
     document.getElementById('score-favorability-bar').style.width = '0%';
     document.getElementById('score-sensitivity-label').textContent = '0%';
     document.getElementById('score-sensitivity-bar').style.width = '0%';
+    updateMatsyaAISec(cell);
     return;
   }
 
@@ -558,6 +571,7 @@ function updateTelemetryCard(cell) {
   } else {
     document.getElementById('telemetry-wind').textContent = 'Fetching...';
     document.getElementById('telemetry-wave').textContent = 'Fetching...';
+    updateMatsyaAISec(cell);
   }
 
   // Update scores
@@ -575,10 +589,157 @@ function displayForecastData(forecast) {
   if (forecast && forecast.windSpeed !== null) {
     document.getElementById('telemetry-wind').textContent = `${forecast.windSpeed} ${forecast.windUnit} @ ${forecast.windDir}°`;
     document.getElementById('telemetry-wave').textContent = `${forecast.waveHeight} ${forecast.waveUnit} @ ${forecast.wavePeriod}s`;
+    if (selectedCell) {
+      updateMatsyaAISec(selectedCell, forecast);
+    }
   } else {
     document.getElementById('telemetry-wind').textContent = '--';
     document.getElementById('telemetry-wave').textContent = '--';
   }
+}
+
+// Update Matsya AI Inference Core Section in UI
+function updateMatsyaAISec(cell, liveForecast = null) {
+  if (!cell || cell.isLand) {
+    document.getElementById('telemetry-twin-x').textContent = '--';
+    document.getElementById('telemetry-twin-y').textContent = '--';
+    document.getElementById('eco-risk-label').textContent = '--';
+    document.getElementById('eco-risk-bar').style.width = '0%';
+    document.getElementById('eco-risk-badge').textContent = '--';
+    document.getElementById('eco-risk-badge').style.background = 'rgba(255,255,255,0.05)';
+    document.getElementById('eco-risk-badge').style.color = '#aaa';
+    document.getElementById('breakdown-e').textContent = '--';
+    document.getElementById('breakdown-b').textContent = '--';
+    document.getElementById('breakdown-o').textContent = '--';
+    document.getElementById('breakdown-a').textContent = '--';
+    document.getElementById('breakdown-v').textContent = '--';
+    document.getElementById('advisory-badge').textContent = '--';
+    document.getElementById('advisory-badge').style.background = 'rgba(255,255,255,0.05)';
+    document.getElementById('advisory-badge').style.color = '#aaa';
+    document.getElementById('advisory-reason').textContent = 'Select a location to synthesize advisory.';
+    document.getElementById('advisory-wave').textContent = '--';
+    document.getElementById('advisory-wind').textContent = '--';
+    return;
+  }
+
+  // 1. Digital Twin Coordinate Projection (X%, Y%) using projectTelemetryToPercent
+  const proj = projectTelemetryToPercent(cell.lat, cell.lng);
+  document.getElementById('telemetry-twin-x').textContent = `${proj.xPercent}%`;
+  document.getElementById('telemetry-twin-y').textContent = `${proj.yPercent}%`;
+
+  // Fetch values from cell or override with live forecast
+  let waveHeightVal = cell.waveHeight || 0;
+  let windSpeedVal = cell.windSpeed || 0;
+
+  if (liveForecast) {
+    if (liveForecast.waveHeight !== undefined && liveForecast.waveHeight !== null) {
+      waveHeightVal = liveForecast.waveHeight;
+    }
+    if (liveForecast.windSpeed !== undefined && liveForecast.windSpeed !== null) {
+      const unit = liveForecast.windUnit || '';
+      if (unit.includes('km/h')) {
+        windSpeedVal = liveForecast.windSpeed * 0.539957;
+      } else if (unit.includes('m/s')) {
+        windSpeedVal = liveForecast.windSpeed * 1.94384;
+      } else {
+        windSpeedVal = liveForecast.windSpeed;
+      }
+    }
+  }
+
+  // Recalculate O_risk and A_risk based on the potentially live values
+  const deltaT = Math.max(0, cell.sst - 28.0);
+  const deltaH = Math.max(0, waveHeightVal - 2.0);
+  const oRisk = Math.max(0, Math.min(100, Math.round(deltaT * 10 + deltaH * 15)));
+
+  let nCriticalAlerts = 0;
+  if (waveHeightVal > 3.0) nCriticalAlerts += 2;
+  else if (waveHeightVal > 2.0) nCriticalAlerts += 1;
+  if (cell.isRestrictedZone) nCriticalAlerts += 1;
+  const aRisk = Math.min(100, nCriticalAlerts * 25);
+
+  const eRisk = cell.eRisk !== undefined ? cell.eRisk : 0;
+  const bRisk = cell.bRisk !== undefined ? cell.bRisk : 0;
+  const vRisk = cell.vRisk !== undefined ? cell.vRisk : 0;
+
+  // Synthesize R_eco Weighted Calculation
+  const rEco = Math.round(0.30 * eRisk + 0.25 * bRisk + 0.20 * oRisk + 0.15 * aRisk + 0.10 * vRisk);
+
+  // Risk Classification
+  let riskLevel = 'Low';
+  if (rEco > 75) riskLevel = 'Critical';
+  else if (rEco > 50) riskLevel = 'High';
+  else if (rEco > 25) riskLevel = 'Moderate';
+
+  // Fishing Advisory Engine
+  let advisoryLevel = 'Recommended';
+  if (waveHeightVal > 4.0 || windSpeedVal > 30 || aRisk > 50) {
+    advisoryLevel = 'Avoid';
+  } else if (waveHeightVal > 2.5 || windSpeedVal > 20 || cell.fishingScore < 40) {
+    advisoryLevel = 'Caution';
+  }
+
+  // Update R_eco gauge and badge
+  document.getElementById('eco-risk-label').textContent = `${rEco}%`;
+  document.getElementById('eco-risk-bar').style.width = `${rEco}%`;
+  
+  const ecoBadge = document.getElementById('eco-risk-badge');
+  ecoBadge.textContent = riskLevel;
+  if (riskLevel === 'Critical') {
+    ecoBadge.style.background = 'rgba(220, 38, 38, 0.2)';
+    ecoBadge.style.color = '#ff8888';
+  } else if (riskLevel === 'High') {
+    ecoBadge.style.background = 'rgba(249, 115, 22, 0.2)';
+    ecoBadge.style.color = '#ffb088';
+  } else if (riskLevel === 'Moderate') {
+    ecoBadge.style.background = 'rgba(234, 179, 8, 0.2)';
+    ecoBadge.style.color = '#ffeb88';
+  } else {
+    ecoBadge.style.background = 'rgba(34, 197, 94, 0.2)';
+    ecoBadge.style.color = '#88ff88';
+  }
+
+  // Update breakdowns
+  document.getElementById('breakdown-e').textContent = `${eRisk}%`;
+  document.getElementById('breakdown-b').textContent = `${bRisk}%`;
+  document.getElementById('breakdown-o').textContent = `${oRisk}%`;
+  document.getElementById('breakdown-a').textContent = `${aRisk}%`;
+  document.getElementById('breakdown-v').textContent = `${vRisk}%`;
+
+  // Update advisory
+  const advBadge = document.getElementById('advisory-badge');
+  advBadge.textContent = advisoryLevel;
+  if (advisoryLevel === 'Avoid') {
+    advBadge.style.background = 'rgba(220, 38, 38, 0.2)';
+    advBadge.style.color = '#ff8888';
+  } else if (advisoryLevel === 'Caution') {
+    advBadge.style.background = 'rgba(234, 179, 8, 0.2)';
+    advBadge.style.color = '#ffeb88';
+  } else {
+    advBadge.style.background = 'rgba(34, 197, 94, 0.2)';
+    advBadge.style.color = '#88ff88';
+  }
+
+  // Reason texts matching the Fishing Advisory Engine rules
+  let reason = 'Oceanic metrics are stable. Safe navigation recommended.';
+  if (waveHeightVal > 4.0 || windSpeedVal > 30 || aRisk > 50) {
+    reason = 'Avoid: ';
+    const reasons = [];
+    if (waveHeightVal > 4.0) reasons.push(`severe waves (${waveHeightVal.toFixed(1)}m)`);
+    if (windSpeedVal > 30) reasons.push(`gale winds (${windSpeedVal.toFixed(0)}kts)`);
+    if (aRisk > 50) reasons.push(`ecological hazards`);
+    reason += reasons.join(' & ');
+  } else if (waveHeightVal > 2.5 || windSpeedVal > 20 || cell.fishingScore < 40) {
+    reason = 'Caution: ';
+    const reasons = [];
+    if (waveHeightVal > 2.5) reasons.push(`waves (${waveHeightVal.toFixed(1)}m)`);
+    if (windSpeedVal > 20) reasons.push(`winds (${windSpeedVal.toFixed(0)}kts)`);
+    if (cell.fishingScore < 40) reasons.push(`low catch yield`);
+    reason += reasons.join(' & ');
+  }
+  document.getElementById('advisory-reason').textContent = reason;
+  document.getElementById('advisory-wave').textContent = `${waveHeightVal.toFixed(1)}m`;
+  document.getElementById('advisory-wind').textContent = `${windSpeedVal.toFixed(0)}kts`;
 }
 
 async function fetchAndCacheForecast(lat, lng, cacheKey) {

@@ -6,30 +6,39 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Space+Mono&family=Inter:wght@400;500;600&display=swap');
 
-/* --- Design Tokens --- */
 :root {
-  /* Colors - Matsya Drishti Ocean AI Branding */
-  --cohere-black: #001d3d; /* Deep Ocean Navy */
-  --primary-color: #003566; /* INCOIS Marine Blue */
-  --ink: #1e293b;
-  --deep-green: #004d40; /* Forest Green / Safe Zone */
-  --dark-navy: #000814;
-  --canvas: #ffffff;
-  --soft-stone: #f8f6f0; /* Coastal Sand */
-  --pale-green: #e0f2f1;
-  --pale-blue: #e0f2fe;
-  --hairline: #cbd5e1;
-  --border-light: #e2e8f0;
-  --card-border: #f1f5f9;
-  --muted: #64748b;
-  --slate: #475569;
-  --body-muted: #334155;
-  --action-blue: #0284c7; /* Sky Marine Blue */
-  --focus-blue: #0c4a6e;
-  --coral: #ff6d00; /* National Saffron Orange */
-  --coral-soft: #ffb74d;
-  --on-primary: #ffffff;
-  --error: #dc2626;
+  /* HSL/Hex Values from the MatsyaDrishti Manual */
+  --color-surface: #0a151a; /* Deep ocean midnight background canvas */
+  --color-surface-container: #172126; /* Intermediate panel background */
+  --color-primary: #a6cfbe; /* Sage green highlight/success indicators */
+  --color-secondary: #afcdc2; /* Muted sage borders and text elements */
+  --color-status-info: #00a3ff; /* Live streams & radar sweep overlays */
+  --color-status-critical: #9d0300; /* Bleaching stress and illegal vessel violations */
+  --color-surface-glass: rgba(24, 61, 61, 0.6); /* Blended semi-transparent containers */
+  --color-border-glow: rgba(147, 177, 166, 0.2); /* Interactive subtle glow borders */
+
+  /* Map old variables to the new ones for compatibility and dark theme */
+  --cohere-black: var(--color-surface);
+  --primary-color: var(--color-primary);
+  --ink: #ffffff;
+  --deep-green: var(--color-primary);
+  --dark-navy: var(--color-surface);
+  --canvas: var(--color-surface);
+  --soft-stone: var(--color-surface-container);
+  --pale-green: rgba(166, 207, 190, 0.15);
+  --pale-blue: rgba(0, 163, 255, 0.15);
+  --hairline: var(--color-border-glow);
+  --border-light: var(--color-border-glow);
+  --card-border: var(--color-border-glow);
+  --muted: var(--color-secondary);
+  --slate: var(--color-secondary);
+  --body-muted: #d9e4eb;
+  --action-blue: var(--color-status-info);
+  --focus-blue: var(--color-status-info);
+  --coral: var(--color-status-critical);
+  --coral-soft: #ffad9b;
+  --on-primary: var(--color-surface);
+  --error: var(--color-status-critical);
 
   /* Typography */
   --font-display: 'Space Grotesk', 'Inter', sans-serif;
@@ -54,9 +63,8 @@
   --space-xxl: 48px;
   --space-section: 80px;
 
-  /* Shadows (Minimal or None for Cohere Flat styling) */
-  --shadow-subtle: 0 1px 3px rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.04);
-  --shadow-focus: 0 0 0 3px rgba(76, 110, 230, 0.2);
+  --shadow-subtle: 0 4px 30px rgba(0, 0, 0, 0.25);
+  --shadow-focus: 0 0 0 3px rgba(0, 163, 255, 0.4);
 }
 
 /* --- Base Rules --- */
@@ -248,13 +256,13 @@ header {
 }
 
 .hud-panel {
-  background: rgba(255, 255, 255, 0.75);
+  background: var(--color-surface-glass);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  border: 1px solid var(--color-border-glow);
   border-radius: var(--radius-sm);
   padding: var(--space-xs) var(--space-sm);
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.03);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.25);
   display: flex;
   align-items: center;
   gap: var(--space-sm);
@@ -263,9 +271,10 @@ header {
 /* Switch & Controls */
 .view-switch {
   display: flex;
-  background: var(--border-light);
+  background: rgba(255, 255, 255, 0.05);
   padding: 2px;
   border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border-glow);
 }
 
 .switch-btn {
@@ -276,14 +285,14 @@ header {
   font-family: var(--font-body);
   font-size: 13px;
   font-weight: 500;
-  color: var(--slate);
+  color: var(--color-secondary);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .switch-btn.active {
-  background: var(--canvas);
-  color: var(--cohere-black);
+  background: var(--color-primary);
+  color: var(--color-surface);
   box-shadow: var(--shadow-subtle);
 }
 
@@ -330,19 +339,72 @@ header {
 }
 
 .info-card {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(238, 236, 231, 0.8);
+  position: relative;
+  background: var(--color-surface-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--color-border-glow);
   border-radius: var(--radius-sm);
   padding: var(--space-md);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+
+.info-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(
+    150px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(166, 207, 190, 0.12),
+    transparent 80%
+  );
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.info-card:hover::before {
+  opacity: 1;
 }
 
 .info-card:hover {
-  border-color: var(--slate);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+  border-color: var(--color-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(0, 163, 255, 0.15);
+}
+
+.info-card > * {
+  position: relative;
+  z-index: 2;
+}
+
+/* Radar Sweep indicator overlay */
+.radar-sweep-indicator {
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(from 0deg at 50% 50%, rgba(0, 163, 255, 0.08) 0deg, rgba(0, 163, 255, 0) 120deg);
+  border-radius: 50%;
+  transform-origin: center;
+  animation: radar-sweep 6s linear infinite;
+  pointer-events: none;
+  z-index: 2;
+}
+
+@keyframes radar-sweep {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .info-card-header {
