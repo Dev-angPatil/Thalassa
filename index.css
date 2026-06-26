@@ -8,28 +8,28 @@
 
 /* --- Design Tokens --- */
 :root {
-  /* Colors */
-  --cohere-black: #000000;
-  --primary-color: #17171c;
-  --ink: #212121;
-  --deep-green: #003c33;
-  --dark-navy: #071829;
+  /* Colors - Matsya Drishti Ocean AI Branding */
+  --cohere-black: #001d3d; /* Deep Ocean Navy */
+  --primary-color: #003566; /* INCOIS Marine Blue */
+  --ink: #1e293b;
+  --deep-green: #004d40; /* Forest Green / Safe Zone */
+  --dark-navy: #000814;
   --canvas: #ffffff;
-  --soft-stone: #eeece7;
-  --pale-green: #edfce9;
-  --pale-blue: #f1f5ff;
-  --hairline: #d9d9dd;
-  --border-light: #e5e7eb;
-  --card-border: #f2f2f2;
-  --muted: #93939f;
-  --slate: #75758a;
-  --body-muted: #616161;
-  --action-blue: #1863dc;
-  --focus-blue: #4c6ee6;
-  --coral: #ff7759;
-  --coral-soft: #ffad9b;
+  --soft-stone: #f8f6f0; /* Coastal Sand */
+  --pale-green: #e0f2f1;
+  --pale-blue: #e0f2fe;
+  --hairline: #cbd5e1;
+  --border-light: #e2e8f0;
+  --card-border: #f1f5f9;
+  --muted: #64748b;
+  --slate: #475569;
+  --body-muted: #334155;
+  --action-blue: #0284c7; /* Sky Marine Blue */
+  --focus-blue: #0c4a6e;
+  --coral: #ff6d00; /* National Saffron Orange */
+  --coral-soft: #ffb74d;
   --on-primary: #ffffff;
-  --error: #b30000;
+  --error: #dc2626;
 
   /* Typography */
   --font-display: 'Space Grotesk', 'Inter', sans-serif;
@@ -583,3 +583,100 @@ header {
 .status-dot.orange { background-color: #ef6c00; }
 .status-dot.red { background-color: #c62828; }
 .status-dot.blue { background-color: #1565c0; }
+
+/* --- Matsya Drishti Custom styles --- */
+.nav-logo {
+  font-family: var(--font-display) !important;
+  font-weight: 700;
+  letter-spacing: 0.5px !important;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.nav-sub-tag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  background: var(--coral);
+  color: white;
+  border-radius: var(--radius-xs);
+  padding: 2px 6px;
+  font-weight: bold;
+  letter-spacing: 0.8px;
+  border: 1px solid var(--coral);
+}
+
+/* Language Selector */
+.lang-selector {
+  display: flex;
+  background: var(--border-light);
+  padding: 2px;
+  border-radius: var(--radius-pill);
+  align-items: center;
+  gap: 2px;
+}
+.lang-btn {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--slate);
+  padding: 4px 10px;
+  cursor: pointer;
+  border-radius: var(--radius-pill);
+  transition: all 0.15s ease;
+}
+.lang-btn:hover {
+  color: var(--cohere-black);
+}
+.lang-btn.active {
+  background: var(--canvas);
+  color: var(--primary-color);
+  box-shadow: var(--shadow-subtle);
+}
+
+/* Alert Ticker */
+.alert-ticker {
+  display: flex;
+  background: #fffdf9;
+  border-bottom: 1px solid var(--border-light);
+  height: 32px;
+  align-items: center;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  overflow: hidden;
+  position: relative;
+  z-index: 10;
+}
+.ticker-label {
+  background: var(--coral);
+  color: white;
+  padding: 0 var(--space-md);
+  height: 100%;
+  display: flex;
+  align-items: center;
+  font-weight: bold;
+  z-index: 15;
+  box-shadow: 2px 0 8px rgba(0,0,0,0.1);
+  white-space: nowrap;
+}
+.ticker-content-wrapper {
+  flex-grow: 1;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+.ticker-text {
+  display: flex;
+  gap: 80px;
+  white-space: nowrap;
+  animation: ticker 30s linear infinite;
+  padding-left: 20px;
+}
+.ticker-text span {
+  color: var(--primary-color);
+  font-weight: 500;
+}
+@keyframes ticker {
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-100%, 0, 0); }
+}

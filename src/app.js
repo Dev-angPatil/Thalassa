@@ -13,8 +13,106 @@ let mouseMoveDebounceTimer = null;
 
 // Global state
 let currentMode = 'fisherman'; // 'fisherman' or 'conservationist'
+let currentLang = 'en'; // 'en', 'ml', or 'ta'
 let selectedPort = 'munambam';
 let dayOfYear = 175; // Defaults to late June (Monsoon season)
+
+// Matsya Drishti Multilingual Translation Engine
+const TRANSLATIONS = {
+  en: {
+    titleFisherman: "Optimized Fishing & Catch Advisories",
+    descFisherman: "Real-time oceanographic routing system prioritizing harvest yields based on sea surface temperature and primary productivity chlorophyll values.",
+    titleConservationist: "Marine Ecosystem Protection & Spawning Bans",
+    descConservationist: "Protected marine conservation reserves and seasonal species spawning calendar monitoring for sustainable ocean ecology management.",
+    badgeFisherman: "FISHERMAN VIEW",
+    badgeConservationist: "CONSERVATION VIEW",
+    listTitleFisherman: "HIGH YIELD FISHING ZONES",
+    listTitleConservationist: "CRITICAL HABITATS & ACTIVE RESTRICTIONS",
+    btnLive: "Live INCOIS Fetch",
+    advisoryHeader: "⚠️ INCOIS ADVISORY",
+    advisoryText: [
+      "🌊 HIGH WAVE WARNING: Wave heights of 2.5m - 3.2m forecast off Kerala coast (Vizhinjam to Kasaragod). Fishermen advised to be cautious.",
+      "💨 MET ALERT: Southwest winds reaching 45-55 km/h expected. Strong wind warning active.",
+      "🐟 PFZ INSIGHT: Optimal Sea Surface Temperature (27.8°C) and high Chlorophyll density detected 45km west of Neendakara."
+    ]
+  },
+  ml: {
+    titleFisherman: "മെച്ചപ്പെടുത്തിയ മത്സ്യബന്ധന വിവരങ്ങൾ",
+    descFisherman: "കടൽ താപനിലയും ക്ലോറോഫിൽ സാന്ദ്രതയും അടിസ്ഥാനമാക്കി കൂടുതൽ മീൻ ലഭിക്കുന്നതിനുള്ള തത്സമയ റൂട്ടിംഗ് സംവിധാനം.",
+    titleConservationist: "കടൽ സംരക്ഷണവും നിരോധന കാലയളവും",
+    descConservationist: "സുസ്ഥിരമായ മത്സ്യബന്ധനത്തിനും കടൽ ആവാസവ്യവസ്ഥയുടെ സംരക്ഷണത്തിനുമായി വിവിധ സംരക്ഷിത മേഖലകളും പ്രജനന നിരോധന കാലയളവ് പരിശോധനയും.",
+    badgeFisherman: "മത്സ്യബന്ധന സഹായി",
+    badgeConservationist: "സംരക്ഷണ സഹായി",
+    listTitleFisherman: "കൂടിയ വിളവുള്ള മത്സ്യബന്ധന മേഖലകൾ",
+    listTitleConservationist: "പ്രധാന കടൽ സംരക്ഷിത പ്രദേശങ്ങൾ",
+    btnLive: "തത്സമയ വിവരങ്ങൾ",
+    advisoryHeader: "⚠️ മുന്നറിയിപ്പ്",
+    advisoryText: [
+      "🌊 ഉയർന്ന തിരമാല ജാഗ്രത: കേരള തീരങ്ങളിൽ (വിഴിഞ്ഞം മുതൽ കാസർഗോഡ് വരെ) 2.5 മുതൽ 3.2 മീറ്റർ വരെ ഉയരമുള്ള തിരമാലകൾക്ക് സാധ്യത. ജാഗ്രത പാലിക്കുക.",
+      "💨 കാറ്റ് മുന്നറിയിപ്പ്: മണിക്കൂറിൽ 45-55 കി.മീ വേഗതയുള്ള ശക്തമായ കാറ്റിന് സാധ്യതയുണ്ട്.",
+      "🐟 ഉപദേശം: നീണ്ടകരയ്ക്ക് പടിഞ്ഞാറ് 45 കി.മീ മാറി അനുകൂല താപനിലയും കൂടുതൽ പ്ലവങ്ങളും കണ്ടെത്തി."
+    ]
+  },
+  ta: {
+    titleFisherman: "மீன்பிடி வழிகாட்டி மற்றும் ஆலோசனைகள்",
+    descFisherman: "கடல் வெப்பநிலை மற்றும் குளோரோபில் அடர்த்தியின் அடிப்படையில் அதிக மகசூல் தரும் பகுதிகளுக்கான நிகழ்நேர கடல் வழிகாட்டி.",
+    titleConservationist: "கடல் சுற்றுச்சூழல் பாதுகாப்பு",
+    descConservationist: "நிலையான மீன்பிடிப்பு மற்றும் கடல் வளங்களைப் பாதுகாப்பதற்கான தடைசெய்யப்பட்ட பகுதிகள் மற்றும் இனப்பெருக்க கால அவகாசம் கண்காணிப்பு.",
+    badgeFisherman: "மீனவர் பார்வை",
+    badgeConservationist: "கடல் பாதுகாப்பு",
+    listTitleFisherman: "அதிக மகசூல் தரும் மீன்பிடி மண்டலங்கள்",
+    listTitleConservationist: "முக்கிய பாதுகாக்கப்பட்ட கடல் பகுதிகள்",
+    btnLive: "லைவ் தகவல்",
+    advisoryHeader: "⚠️ அறிவிப்பு",
+    advisoryText: [
+      "🌊 அலை எச்சரிக்கை: கேரளா கடற்பகுதியில் (விழிஞ்ஞம் முதல் காசர்கோடு வரை) 2.5 முதல் 3.2 மீட்டர் வரை உயரமான அலைகள் வீசக்கூடும். மீனவர்கள் எச்சரிக்கையுடன் இருக்கவும்.",
+      "💨 காற்றின் எச்சரிக்கை: மணிக்கு 45-55 கிமீ வேகத்தில் காற்று வீசக்கூடும் என்பதால் கூடுதல் கவனம் தேவை.",
+      "🐟 மீன்பிடி வாய்ப்பு: நீண்டகரைக்கு மேற்கே 45 கிமீ தொலைவில் சாதகமான வெப்பநிலையும் அதிக குளோரோபில் செறிவும் கண்டறியப்பட்டுள்ளது."
+    ]
+  }
+};
+
+function translateUI(lang) {
+  currentLang = lang;
+  const trans = TRANSLATIONS[lang] || TRANSLATIONS['en'];
+  
+  const heading = document.getElementById('main-perspective-heading');
+  const desc = document.getElementById('main-perspective-desc');
+  const badge = document.getElementById('perspective-badge');
+  const listTitle = document.getElementById('dynamic-list-title');
+  const btnLive = document.getElementById('btn-fetch-live');
+  const tickerLabel = document.querySelector('.ticker-label');
+  const tickerTextDiv = document.querySelector('.ticker-text');
+
+  if (currentMode === 'fisherman') {
+    if (heading) heading.textContent = trans.titleFisherman;
+    if (desc) desc.textContent = trans.descFisherman;
+    if (listTitle) listTitle.textContent = trans.listTitleFisherman;
+    if (badge) {
+      badge.textContent = trans.badgeFisherman;
+      badge.style.background = 'var(--pale-green)';
+      badge.style.color = 'var(--deep-green)';
+    }
+  } else {
+    if (heading) heading.textContent = trans.titleConservationist;
+    if (desc) desc.textContent = trans.descConservationist;
+    if (listTitle) listTitle.textContent = trans.listTitleConservationist;
+    if (badge) {
+      badge.textContent = trans.badgeConservationist;
+      badge.style.background = 'var(--pale-blue)';
+      badge.style.color = 'var(--primary-color)';
+    }
+  }
+
+  if (btnLive) btnLive.textContent = trans.btnLive;
+  if (tickerLabel) tickerLabel.textContent = trans.advisoryHeader;
+  
+  if (tickerTextDiv) {
+    tickerTextDiv.innerHTML = trans.advisoryText.map(t => `<span>${t}</span>`).join('');
+  }
+
+  updateSidebarLists();
+}
 let liveData = null;
 let gridData = [];
 let selectedCell = null;
@@ -185,6 +283,17 @@ function setupEventListeners() {
 
   // Live API Fetch trigger
   document.getElementById('btn-fetch-live').addEventListener('click', triggerLiveApiFetch);
+
+  // Language button listeners
+  const langBtns = document.querySelectorAll('.lang-btn');
+  langBtns.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      langBtns.forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+      const lang = e.target.getAttribute('data-lang');
+      translateUI(lang);
+    });
+  });
 
   // Leaflet Map events
   map.on('mousemove', handleMapMouseMove);
@@ -385,30 +494,16 @@ function switchPerspective(mode) {
   
   const btnFish = document.getElementById('mode-fisherman');
   const btnCons = document.getElementById('mode-conservationist');
-  const badge = document.getElementById('perspective-badge');
-  const heading = document.getElementById('main-perspective-heading');
-  const desc = document.getElementById('main-perspective-desc');
-  const listTitle = document.getElementById('dynamic-list-title');
 
   if (mode === 'fisherman') {
     btnFish.classList.add('active');
     btnCons.classList.remove('active');
-    badge.textContent = "FISHERMAN VIEW";
-    badge.style.background = 'var(--pale-blue)';
-    badge.style.color = 'var(--action-blue)';
-    heading.textContent = "Optimized Fishing & Catch Advisories";
-    desc.textContent = "Real-time oceanographic routing system prioritizing harvest yields based on sea surface temperature and primary productivity chlorophyll values.";
-    listTitle.textContent = "HIGH YIELD FISHING ZONES";
   } else {
     btnFish.classList.remove('active');
     btnCons.classList.add('active');
-    badge.textContent = "CONSERVATION VIEW";
-    badge.style.background = 'var(--pale-green)';
-    badge.style.color = 'var(--deep-green)';
-    heading.textContent = "Marine Reserves & Spawning Warnings";
-    desc.textContent = "Monitoring ecological stressors, spawning calendar bans, and historical overfishing indicators to preserve habitats and restrict sensitive zones.";
-    listTitle.textContent = "CRITICAL HABITATS & ACTIVE RESTRICTIONS";
   }
+
+  translateUI(currentLang);
 
   selectedCell = null;
   optimizedRoute = null;

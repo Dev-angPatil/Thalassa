@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Thalassa - Kerala Coastal Digital Twin</title>
+  <title>Matsya Drishti - Ocean AI & Fisheries Advisory Portal</title>
   <link rel="stylesheet" href="/index.css">
   <!-- Leaflet CSS & JS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
@@ -11,29 +11,47 @@
 </head>
 <body>
 
-  <!-- Announcement Bar (Cohere Style) -->
-  <div style="background: var(--cohere-black); color: var(--on-dark); height: 36px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-family: var(--font-mono); letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.1);">
-    <span>THALASSA DIGITAL TWIN PROTOTYPE — ACTIVE MONSOON KERALA GRID</span>
+  <!-- Announcement Bar -->
+  <div style="background: var(--cohere-black); color: white; height: 36px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-family: var(--font-mono); letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+    <span>DEPARTMENT OF FISHERIES • INCOIS OCEAN ADVISORY SERVICES • LIVE MONSOON GRID</span>
   </div>
 
   <!-- Header Navigation -->
   <header>
     <div class="container nav-bar">
-      <a href="#" class="nav-logo">THALASSA</a>
+      <a href="#" class="nav-logo">
+        MATSYA DRISHTI <span class="nav-sub-tag">OCEAN AI</span>
+      </a>
       
       <!-- Primary Toggle between Modes -->
       <div class="view-switch">
-        <button id="mode-fisherman" class="switch-btn active">Fisherman Dashboard</button>
-        <button id="mode-conservationist" class="switch-btn">Conservation Dashboard</button>
+        <button id="mode-fisherman" class="switch-btn active">Fisherman Mode</button>
+        <button id="mode-conservationist" class="switch-btn">Conservation Mode</button>
       </div>
 
       <!-- Action Actions -->
       <div class="nav-actions">
-        <button id="btn-fetch-live" class="btn-outline">Trigger Live API Fetch</button>
-        <span class="mono-label" style="font-size: 10px;">GRID CELL V1.0</span>
+        <div class="lang-selector">
+          <span class="lang-btn active" data-lang="en">EN</span>
+          <span class="lang-btn" data-lang="ml">മലയാളം</span>
+          <span class="lang-btn" data-lang="ta">தமிழ்</span>
+        </div>
+        <button id="btn-fetch-live" class="btn-outline">Live INCOIS Fetch</button>
       </div>
     </div>
   </header>
+
+  <!-- INCOIS Ocean State Advisory Banner -->
+  <div class="alert-ticker">
+    <div class="ticker-label">⚠️ INCOIS ADVISORY</div>
+    <div class="ticker-content-wrapper">
+      <div class="ticker-text">
+        <span>🌊 HIGH WAVE WARNING: Wave heights of 2.5m - 3.2m forecast off Kerala coast (Vizhinjam to Kasaragod). Fishermen advised to be cautious.</span>
+        <span>💨 MET ALERT: Southwest winds reaching 45-55 km/h expected. Strong wind warning active.</span>
+        <span>🐟 PFZ INSIGHT: Optimal Sea Surface Temperature (27.8°C) and high Chlorophyll density detected 45km west of Neendakara.</span>
+      </div>
+    </div>
+  </div>
 
   <!-- Main Dashboard Workspace -->
   <main class="container">
