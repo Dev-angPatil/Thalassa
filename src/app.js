@@ -908,6 +908,17 @@ async function triggerLiveApiFetch() {
   btn.textContent = "Querying APIs...";
   showToast("Accessing INCOIS ERDDAP servers. Requesting latest chlorophyll and SST indices...");
 
+  // Update timeline to today's date
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 0);
+  const diff = now - start;
+  const oneDay = 1000 * 60 * 60 * 24;
+  const todayDayOfYear = Math.floor(diff / oneDay);
+  dayOfYear = todayDayOfYear;
+  
+  document.getElementById('timeline-slider').value = dayOfYear;
+  updateTimelineLabel();
+
   try {
     const [sstApiData, chlApiData] = await Promise.all([
       fetchIncoisErddapData('sst').catch(() => null),
@@ -929,10 +940,16 @@ async function triggerLiveApiFetch() {
         document.getElementById('layer-chl').classList.add('active');
       }
     } else {
-      showToast("Live servers uncontactable or blocked by CORS. Running local simulation.", 'orange');
+      showToast("Live servers uncontactable or blocked by CORS. Running local simulation for today.", 'orange');
     }
     
     updateGrid();
+    
+    // Update route calculation if a target cell is locked
+    if (selectedCell) {
+      optimizedRoute = calculateOptimizedRoute(selectedPort, selectedCell, gridData, dayOfYear);
+      updateRouteTelemetry();
+    }
   } catch (err) {
     showToast("API synchronization error. Loaded offline simulator.", 'red');
   } finally {
