@@ -37,8 +37,14 @@ const activeOverlays = {
   sst: true,
   chl: true,
   currents: false,
-  mpa: true
+  mpa: true,
+  prediction: false
 };
+
+// Animated currents state helpers
+let currentPolylines = [];
+let currentsAnimationId = null;
+let currentOffset = 0;
 
 // Bounding box limits matching data_engine.js
 const LAT_MIN = 8.0;
@@ -242,6 +248,16 @@ function init() {
 // Tick loop for real-time visual pulses and vessel transit animation
 function tick() {
   pulseState = (pulseState + 0.05) % (2 * Math.PI);
+
+  // Animate currents vectors flowing along flow direction
+  if (activeOverlays.currents && currentPolylines.length > 0) {
+    currentOffset -= 0.6;
+    currentPolylines.forEach(line => {
+      if (line._path) {
+        line.setStyle({ dashOffset: `${currentOffset}` });
+      }
+    });
+  }
   
   if (optimizedRoute && vesselMarker && map.hasLayer(vesselMarker)) {
     if (isSimulatingVessel) {
@@ -325,6 +341,27 @@ function tick() {
       }
       if (fuelEl) fuelEl.textContent = `${simFuelBurned.toFixed(1)} L`;
       if (co2El) co2El.textContent = `${Math.max(0, co2Saved).toFixed(1)} kg`;
+
+      // Update circular SVG Gauges
+      const fuelRing = document.getElementById('gauge-fuel-ring');
+      const fuelText = document.getElementById('gauge-fuel-text');
+      const co2Ring = document.getElementById('gauge-co2-ring');
+      const co2Text = document.getElementById('gauge-co2-text');
+      
+      if (fuelRing && fuelText) {
+        const efficiency = Math.max(30, Math.min(100, Math.round(100 - (dragPercent + 15) * 2)));
+        const offset = 163.3 - (163.3 * efficiency / 100);
+        fuelRing.style.strokeDashoffset = offset;
+        fuelText.textContent = `${efficiency}%`;
+      }
+      
+      if (co2Ring && co2Text) {
+        const stdTotalCO2 = stdFuelCurrent * 2.62;
+        const savingsRatio = stdTotalCO2 > 0 ? Math.max(0, Math.min(99, Math.round((co2Saved / stdTotalCO2) * 100))) : 0;
+        const offset = 163.3 - (163.3 * savingsRatio / 100);
+        co2Ring.style.strokeDashoffset = offset;
+        co2Text.textContent = `${savingsRatio}%`;
+      }
       
       if (safetyEl) {
         if (cell.waveHeight > 2.0 || cell.windSpeed > 25) {
@@ -454,6 +491,8 @@ function updateGrid() {
 function updateMapLayers() {
   const currentMonth = Math.floor((dayOfYear / 365) * 12) + 1;
 
+  const isPredictionActive = activeOverlays.prediction;
+
   // 1. Update Grid Cells
   gridData.forEach(cell => {
     const rect = cell.rectLayer;
@@ -469,28 +508,41 @@ function updateMapLayers() {
       return;
     }
 
+    // Determine the source cell data to display for AI Drift Forecasting
+    let displayCell = cell;
+    if (isPredictionActive) {
+      const angleRad = (cell.currentDir * Math.PI) / 180;
+      // Drift source offset of 2 steps down-current
+      const r_src = Math.max(0, Math.min(23, cell.row - Math.round(Math.cos(angleRad) * 2)));
+      const c_src = Math.max(0, Math.min(17, cell.col - Math.round(Math.sin(angleRad) * 2)));
+      const foundSrc = gridData.find(c => c.row === r_src && c.col === c_src);
+      if (foundSrc && !foundSrc.isLand) {
+        displayCell = foundSrc;
+      }
+    }
+
     let fillColor = 'rgba(0, 0, 0, 0)';
     let fillOpacity = 0;
 
     if (currentMode === 'fisherman') {
       if (activeOverlays.sst && !activeOverlays.chl) {
-        const alpha = Math.max(0.1, (cell.sst - 25) / 6.0);
+        const alpha = Math.max(0.1, (displayCell.sst - 25) / 6.0);
         fillColor = 'rgb(239, 108, 0)';
         fillOpacity = alpha * 0.35;
       } else if (activeOverlays.chl && !activeOverlays.sst) {
-        const alpha = Math.min(1.0, Math.max(0.1, cell.chlorophyll / 5.0));
+        const alpha = Math.min(1.0, Math.max(0.1, displayCell.chlorophyll / 5.0));
         fillColor = 'rgb(46, 125, 50)';
         fillOpacity = alpha * 0.35;
       } else if (activeOverlays.sst && activeOverlays.chl) {
-        const alpha = Math.max(0.1, cell.fishingScore / 100);
+        const alpha = Math.max(0.1, displayCell.fishingScore / 100);
         fillColor = 'rgb(24, 99, 220)';
         fillOpacity = alpha * 0.35;
       }
     } else {
-      if (activeOverlays.mpa && cell.conservationScore > 30) {
-        const alpha = Math.max(0.15, cell.conservationScore / 100);
-        fillColor = cell.isRestrictedZone ? 'rgb(179, 0, 0)' : 'rgb(255, 119, 89)';
-        fillOpacity = cell.isRestrictedZone ? alpha * 0.45 : alpha * 0.35;
+      if (activeOverlays.mpa && displayCell.conservationScore > 30) {
+        const alpha = Math.max(0.15, displayCell.conservationScore / 100);
+        fillColor = displayCell.isRestrictedZone ? 'rgb(179, 0, 0)' : 'rgb(255, 119, 89)';
+        fillOpacity = displayCell.isRestrictedZone ? alpha * 0.45 : alpha * 0.35;
       }
     }
 
@@ -559,6 +611,7 @@ function updateMapLayers() {
 
   // 4. Update Currents Vectors
   currentsLayerGroup.clearLayers();
+  currentPolylines = [];
   if (activeOverlays.currents) {
     gridData.forEach(cell => {
       if (cell.isLand) return;
@@ -574,13 +627,15 @@ function updateMapLayers() {
       ];
       
       const line = L.polyline([start, end], {
-        color: 'rgba(24, 99, 220, 0.45)',
-        weight: 1.2,
+        color: 'rgba(0, 163, 255, 0.65)',
+        weight: 1.5,
+        dashArray: '6, 12',
         interactive: false
       });
       line.addTo(currentsLayerGroup);
+      currentPolylines.push(line);
       
-      // Draw arrowhead by adding short lines
+      // Draw arrowhead by adding short lines (static arrow)
       const headlen = scale * 0.25;
       const leftArrow = [
         end[0] + Math.cos(angleRad - Math.PI / 6) * headlen,
@@ -591,8 +646,8 @@ function updateMapLayers() {
         end[1] - Math.sin(angleRad + Math.PI / 6) * headlen
       ];
       
-      L.polyline([end, leftArrow], { color: 'rgba(24, 99, 220, 0.45)', weight: 1.2 }).addTo(currentsLayerGroup);
-      L.polyline([end, rightArrow], { color: 'rgba(24, 99, 220, 0.45)', weight: 1.2 }).addTo(currentsLayerGroup);
+      L.polyline([end, leftArrow], { color: 'rgba(0, 163, 255, 0.65)', weight: 1.2 }).addTo(currentsLayerGroup);
+      L.polyline([end, rightArrow], { color: 'rgba(0, 163, 255, 0.65)', weight: 1.2 }).addTo(currentsLayerGroup);
     });
   }
 }
@@ -601,9 +656,11 @@ function updateMapLayers() {
 function setupEventListeners() {
   // Mode toggles
   document.getElementById('mode-fisherman').addEventListener('click', () => {
+    playSonarPing(1100, 0.05, 'sine');
     switchPerspective('fisherman');
   });
   document.getElementById('mode-conservationist').addEventListener('click', () => {
+    playSonarPing(1000, 0.05, 'sine');
     switchPerspective('conservationist');
   });
 
@@ -612,10 +669,12 @@ function setupEventListeners() {
   setupLayerToggle('layer-chl', 'chl');
   setupLayerToggle('layer-currents', 'currents');
   setupLayerToggle('layer-mpa', 'mpa');
+  setupLayerToggle('layer-prediction', 'prediction');
 
   // Port selector
   const portSelect = document.getElementById('port-selector');
   portSelect.addEventListener('change', (e) => {
+    playSonarPing(900, 0.08, 'sine');
     selectedPort = e.target.value;
     if (selectedCell) {
       optimizedRoute = calculateOptimizedRoute(selectedPort, selectedCell, gridData, dayOfYear);
@@ -632,27 +691,48 @@ function setupEventListeners() {
   });
 
   // Play Pause animation control
-  document.getElementById('btn-play-pause').addEventListener('click', togglePlay);
+  document.getElementById('btn-play-pause').addEventListener('click', () => {
+    playSonarPing(1100, 0.06, 'sine');
+    togglePlay();
+  });
 
   // Live API Fetch trigger
-  document.getElementById('btn-fetch-live').addEventListener('click', triggerLiveApiFetch);
+  document.getElementById('btn-fetch-live').addEventListener('click', () => {
+    playSonarPing(800, 0.12, 'sine');
+    triggerLiveApiFetch();
+  });
 
   // Preset Scenario selectors
   document.getElementById('preset-monsoon').addEventListener('click', () => {
+    playSonarPing(700, 0.08, 'sine');
     applyPresetScenario('monsoon');
   });
   document.getElementById('preset-winter').addEventListener('click', () => {
+    playSonarPing(750, 0.08, 'sine');
     applyPresetScenario('winter');
   });
   document.getElementById('preset-live').addEventListener('click', () => {
+    playSonarPing(800, 0.08, 'sine');
     applyPresetScenario('live');
   });
 
   // Guided Map Tour buttons
-  document.getElementById('btn-start-tour').addEventListener('click', startTour);
-  document.getElementById('tour-close-btn').addEventListener('click', endTour);
-  document.getElementById('tour-next-btn').addEventListener('click', nextTourStep);
-  document.getElementById('tour-prev-btn').addEventListener('click', prevTourStep);
+  document.getElementById('btn-start-tour').addEventListener('click', () => {
+    playSonarPing(1000, 0.15, 'sine');
+    startTour();
+  });
+  document.getElementById('tour-close-btn').addEventListener('click', () => {
+    playSonarPing(600, 0.05, 'sine');
+    endTour();
+  });
+  document.getElementById('tour-next-btn').addEventListener('click', () => {
+    playSonarPing(1100, 0.06, 'sine');
+    nextTourStep();
+  });
+  document.getElementById('tour-prev-btn').addEventListener('click', () => {
+    playSonarPing(900, 0.06, 'sine');
+    prevTourStep();
+  });
 
   // Leaflet Map events
   map.on('mousemove', handleMapMouseMove);
@@ -1012,6 +1092,16 @@ function handleMapClick(e) {
 
   if (cell) {
     if (cell.isLand) return; // Skip land clicks
+    
+    // Play specific sonification based on cell classification
+    if (cell.isRestrictedZone) {
+      playSonarPing(220, 0.35, 'triangle');
+      setTimeout(() => playSonarPing(180, 0.35, 'triangle'), 150);
+    } else if (cell.fishingScore > 65) {
+      playSonarPing(950, 0.7, 'sine');
+    } else {
+      playSonarPing(480, 0.3, 'sine');
+    }
     
     selectedCell = cell;
     optimizedRoute = calculateOptimizedRoute(selectedPort, selectedCell, gridData, dayOfYear);
@@ -1696,4 +1786,48 @@ function addLegendItem(color, text, type = 'box') {
     <span style="color: var(--ink);">${text}</span>
   `;
   container.appendChild(item);
+}
+
+// Dynamic mouse position tracking on info-cards for premium hover spotlight glow
+document.addEventListener('mousemove', (e) => {
+  const card = e.target.closest('.info-card');
+  if (!card) return;
+  const rect = card.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  card.style.setProperty('--mouse-x', `${x}px`);
+  card.style.setProperty('--mouse-y', `${y}px`);
+});
+
+// Web Audio API Audio Synthesis for Ambient Sonar Sonification
+let audioCtx = null;
+function initAudio() {
+  if (audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+}
+function playSonarPing(freq = 800, duration = 0.6, type = 'sine') {
+  try {
+    initAudio();
+    if (!audioCtx) return;
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+    const osc = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    
+    // Smooth exponential decay
+    gainNode.gain.setValueAtTime(0.06, audioCtx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+    
+    osc.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    
+    osc.start();
+    osc.stop(audioCtx.currentTime + duration);
+  } catch (e) {
+    console.warn('AudioContext failed to start/play:', e);
+  }
 }

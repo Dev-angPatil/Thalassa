@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Matsya Drishti - Ocean AI & Fisheries Advisory Portal</title>
+  <title>Thalassa - Matsya Drishti Ocean AI & Fisheries Advisory Portal</title>
+  <meta name="description" content="Thalassa (Matsya Drishti) is a high-fidelity digital twin and ocean AI advisory portal mapping the Kerala coastline to balance sustainable fishing yields with marine reserve spawning bans.">
   <link rel="stylesheet" href="/index.css">
   <!-- Leaflet CSS & JS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
@@ -19,9 +20,11 @@
   <!-- Header Navigation -->
   <header>
     <div class="container nav-bar">
-      <a href="#" class="nav-logo">
-        MATSYA DRISHTI <span class="nav-sub-tag">OCEAN AI</span>
-      </a>
+      <h1 class="nav-logo-wrapper">
+        <a href="#" class="nav-logo">
+          MATSYA DRISHTI <span class="nav-sub-tag">OCEAN AI</span>
+        </a>
+      </h1>
       
       <!-- Primary Toggle between Modes -->
       <div class="view-switch">
@@ -88,6 +91,7 @@
                 <button id="layer-chl" class="layer-badge active">Chlorophyll</button>
                 <button id="layer-currents" class="layer-badge">Currents</button>
                 <button id="layer-mpa" class="layer-badge active">Conservation Zones</button>
+                <button id="layer-prediction" class="layer-badge">AI Forecast</button>
               </div>
             </div>
           </div>
@@ -96,12 +100,12 @@
           <div class="hud-group">
             <div class="hud-panel">
               <span class="mono-label" style="color: var(--ink);">Anchor Port</span>
-              <select id="port-selector" style="font-family: var(--font-body); font-size: 12px; padding: 4px 8px; border: 1px solid var(--hairline); border-radius: var(--radius-xs); background: white; outline: none; cursor: pointer;">
-                <option value="vizhinjam">Vizhinjam (Thiruvananthapuram)</option>
-                <option value="neendakara">Neendakara (Kollam)</option>
-                <option value="munambam" selected>Munambam (Ernakulam)</option>
-                <option value="beypore">Beypore (Kozhikode)</option>
-                <option value="azheekkal">Azheekkal (Kannur)</option>
+              <select id="port-selector" style="font-family: var(--font-body); font-size: 12px; padding: 4px 8px; border: 1px solid var(--hairline); border-radius: var(--radius-xs); background: var(--soft-stone); color: var(--ink); outline: none; cursor: pointer;">
+                <option value="vizhinjam" style="background: var(--soft-stone); color: var(--ink);">Vizhinjam (Thiruvananthapuram)</option>
+                <option value="neendakara" style="background: var(--soft-stone); color: var(--ink);">Neendakara (Kollam)</option>
+                <option value="munambam" style="background: var(--soft-stone); color: var(--ink);" selected>Munambam (Ernakulam)</option>
+                <option value="beypore" style="background: var(--soft-stone); color: var(--ink);">Beypore (Kozhikode)</option>
+                <option value="azheekkal" style="background: var(--soft-stone); color: var(--ink);">Azheekkal (Kannur)</option>
               </select>
             </div>
           </div>
@@ -373,6 +377,28 @@
                 </div>
                 <div class="sim-progress-bar-container">
                   <div class="sim-progress-bar" id="sim-progress-bar"></div>
+                </div>
+              </div>
+
+              <!-- Real-time SVG Dial Gauge HUD -->
+              <div class="sim-gauge-container" style="display: flex; justify-content: center; gap: 24px; margin: 16px 0; padding: 12px; background: rgba(24, 61, 61, 0.2); border: 1px solid var(--color-border-glow); border-radius: var(--radius-sm);">
+                <!-- Gauge 1: Fuel Efficiency -->
+                <div class="sim-gauge-box" style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                  <svg width="60" height="60" viewBox="0 0 64 64">
+                    <circle cx="32" cy="32" r="26" fill="none" stroke="var(--color-border-glow)" stroke-width="4"/>
+                    <circle id="gauge-fuel-ring" cx="32" cy="32" r="26" fill="none" stroke="var(--color-primary)" stroke-width="4" stroke-dasharray="163.3" stroke-dashoffset="163.3" stroke-linecap="round" transform="rotate(-90 32 32)" style="transition: stroke-dashoffset 0.3s ease;"/>
+                    <text x="32" y="36" text-anchor="middle" font-family="var(--font-mono)" font-size="10" fill="var(--ink)" font-weight="bold" id="gauge-fuel-text">--</text>
+                  </svg>
+                  <span class="mono-label" style="font-size: 8px; letter-spacing: 0.5px; color: var(--muted);">EFFICIENCY</span>
+                </div>
+                <!-- Gauge 2: Carbon Offset -->
+                <div class="sim-gauge-box" style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                  <svg width="60" height="60" viewBox="0 0 64 64">
+                    <circle cx="32" cy="32" r="26" fill="none" stroke="var(--color-border-glow)" stroke-width="4"/>
+                    <circle id="gauge-co2-ring" cx="32" cy="32" r="26" fill="none" stroke="var(--color-status-info)" stroke-width="4" stroke-dasharray="163.3" stroke-dashoffset="163.3" stroke-linecap="round" transform="rotate(-90 32 32)" style="transition: stroke-dashoffset 0.3s ease;"/>
+                    <text x="32" y="36" text-anchor="middle" font-family="var(--font-mono)" font-size="10" fill="var(--ink)" font-weight="bold" id="gauge-co2-text">--</text>
+                  </svg>
+                  <span class="mono-label" style="font-size: 8px; letter-spacing: 0.5px; color: var(--muted);">CARBON GAIN</span>
                 </div>
               </div>
 
