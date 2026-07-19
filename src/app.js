@@ -2170,23 +2170,17 @@ function initDroneSwarm() {
   const droneBtn = document.getElementById('btn-deploy-drones');
   if (!droneBtn) return;
 
-  droneBtn.addEventListener('click', () => {
-    // Find highest eco-risk cell as target
-    let target = null;
-    let maxRisk = 0;
-    gridData.forEach(cell => {
-      if (cell.isLand) return;
-      if ((cell.ecoRisk || 0) > maxRisk) {
-        maxRisk = cell.ecoRisk || 0;
-        target = cell;
-      }
-    });
-
-    if (!target) {
-      target = { lat: 10.0, lng: 75.5 };
+    if (!selectedCell) {
+      showToast('Select a target cell on the map first to deploy drones.');
+      return;
     }
 
-    deployDroneSwarm(target.lat, target.lng, 3);
+    if (selectedCell.isLand) {
+      showToast('Cannot deploy marine drones on land.');
+      return;
+    }
+
+    deployDroneSwarm(selectedCell.lat, selectedCell.lng, 3);
   });
 }
 
@@ -2243,7 +2237,8 @@ function deployDroneSwarm(targetLat, targetLng, count) {
       // Drones arrived — show scan ring
       try { playSonarPing(600, 0.8, 'sine'); } catch(e) {}
       showDroneScanRing(targetLat, targetLng);
-      showToast('Drone swarm scan complete. Report transmitted to Matsya AI.');
+      showToast('Drone swarm scan complete. Generating AI report...');
+      generateDroneAIReport(targetLat, targetLng);
     }
   }
 
@@ -2274,6 +2269,64 @@ function showDroneScanRing(lat, lng) {
     scanRing.setRadius(radius);
     scanRing.setStyle({ fillOpacity: Math.max(0, 0.15 - radius / 50000) });
   }, 50);
+}
+
+async function generateDroneAIReport(lat, lng) {
+  // Open the AI Panel if it's closed
+  const aiPanel = document.getElementById('matsya-ai-panel');
+  if (aiPanel) aiPanel.style.display = 'flex';
+
+  const aiChatHistory = document.getElementById('ai-chat-history');
+  if (!aiChatHistory) return;
+
+  // Add a system loading message
+  const loadingId = 'msg-' + Date.now();
+  const loadingHtml = `
+    <div class="ai-message system" id="${loadingId}">
+      <div class="ai-msg-avatar">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10H12V2z"/></svg>
+      </div>
+      <div class="ai-msg-content">
+        <div class="ai-thinking-dot" style="width:8px; height:8px; background:var(--color-primary); border-radius:50%;"></div>
+      </div>
+    </div>
+  `;
+  aiChatHistory.insertAdjacentHTML('beforeend', loadingHtml);
+  aiChatHistory.scrollTop = aiChatHistory.scrollHeight;
+
+  try {
+    const risk = selectedCell ? (selectedCell.ecoRisk || 0) : 0;
+    const isRestricted = selectedCell ? selectedCell.isRestrictedZone : false;
+    
+    let simulatedFindings = isRestricted 
+      ? `Visual scan confirms 2 unauthorized trawlers operating inside the restricted Marine Protected Area.` 
+      : (risk > 0.6 
+          ? `Detected high concentrations of plastic debris and abnormal surface oil sheen. Eco-risk verified as HIGH.` 
+          : `Water quality is nominal. No illegal activity detected. Safe for sustainable fishing operations.`);
+
+    const response = await fetch('/api/gemini-advisory', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query: `You are generating a Drone Swarm Report. Drones have just finished scanning ${lat.toFixed(3)}°N, ${lng.toFixed(3)}°E. The raw sensor findings are: "${simulatedFindings}". Summarize this briefly as a professional, urgent drone telemetry report. Do not add conversational filler. Start with "🚨 DRONE SWARM REPORT:"`,
+        context: { isDroneReport: true, cell: selectedCell }
+      })
+    });
+    
+    const data = await response.json();
+    let text = data.text || `🚨 DRONE SWARM REPORT: Telemetry at ${lat.toFixed(3)}°N, ${lng.toFixed(3)}°E complete. ${simulatedFindings}`;
+    text = text.replace(/\[PAN:\s*-?\d+(\.\d+)?,\s*-?\d+(\.\d+)?\]/gi, '').trim();
+    
+    const msgEl = document.getElementById(loadingId);
+    if (msgEl) {
+      msgEl.querySelector('.ai-msg-content').innerHTML = text.replace(/\n/g, '<br>');
+    }
+  } catch (err) {
+    const msgEl = document.getElementById(loadingId);
+    if (msgEl) {
+      msgEl.querySelector('.ai-msg-content').innerHTML = `🚨 DRONE SWARM REPORT: Scan complete at ${lat.toFixed(3)}°N, ${lng.toFixed(3)}°E. Comm link error. Raw feed saved locally.`;
+    }
+  }
 }
 
 // ==========================================
