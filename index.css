@@ -1,4 +1,4 @@
-﻿/* 
+/* 
   Thalassa - Design System & UI Styles
   Aesthetic: Stark white canvases, deep green-black accents, precise hairline dividers,
              and rounded media panels inspired by Cohere's editorial design layout.
@@ -1247,9 +1247,11 @@ header {
   z-index: 1000;
   display: flex;
   flex-direction: column;
-  background: #0d1b1e;
-  border: 1px solid rgba(166, 207, 190, 0.12);
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(166, 207, 190, 0.06);
+  background: rgba(13, 27, 30, 0.7);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.8), 0 0 32px rgba(0, 163, 255, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1);
   border-radius: 16px;
   overflow: hidden;
   pointer-events: auto;
@@ -1342,7 +1344,7 @@ header {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  background: #0d1b1e;
+  background: transparent;
 }
 
 .ai-chat-history::-webkit-scrollbar {

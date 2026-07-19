@@ -1843,6 +1843,61 @@ function initGeminiAssistant() {
     aiPanel.style.display = 'none';
   });
 
+  // Draggable Panel Logic
+  const aiPanelHeader = aiPanel.querySelector('.ai-panel-header');
+  let isDragging = false;
+  let offsetX = 0;
+  let offsetY = 0;
+
+  if (aiPanelHeader) {
+    aiPanelHeader.style.cursor = 'grab';
+    
+    aiPanelHeader.addEventListener('mousedown', (e) => {
+      if (e.target.closest('.ai-header-btn')) return;
+      isDragging = true;
+      const rect = aiPanel.getBoundingClientRect();
+      offsetX = e.clientX - rect.left;
+      offsetY = e.clientY - rect.top;
+      
+      // Disable CSS transitions during drag for responsive tracking
+      aiPanel.style.transition = 'none';
+      aiPanel.style.animation = 'none'; // Clear slide in animation
+      aiPanelHeader.style.cursor = 'grabbing';
+      document.body.style.userSelect = 'none'; // Prevent text selection
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      
+      // Calculate new position
+      let x = e.clientX - offsetX;
+      let y = e.clientY - offsetY;
+      
+      // Keep within viewport bounds
+      const maxX = window.innerWidth - aiPanel.offsetWidth;
+      const maxY = window.innerHeight - aiPanel.offsetHeight;
+      
+      x = Math.max(0, Math.min(x, maxX));
+      y = Math.max(0, Math.min(y, maxY));
+      
+      aiPanel.style.left = `${x}px`;
+      aiPanel.style.top = `${y}px`;
+      
+      // Clear bottom/right anchoring since we are now positioning via top/left
+      aiPanel.style.bottom = 'auto';
+      aiPanel.style.right = 'auto';
+      aiPanel.style.margin = '0';
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (isDragging) {
+        isDragging = false;
+        aiPanelHeader.style.cursor = 'grab';
+        document.body.style.userSelect = ''; // Restore text selection
+      }
+    });
+  }
+
   // Clear chat
   const aiClearBtn = document.getElementById('ai-clear-btn');
   if (aiClearBtn) {
