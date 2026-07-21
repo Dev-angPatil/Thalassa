@@ -16,6 +16,7 @@
   --brand-warn: #c37d0d;
   --brand-annotate: #1ba673;
   --brand-error: #d45656;
+  --error: #dc2626;
   --brand-cursor: #888888;
 
   /* Hero Atmospheric Gradients */
@@ -1133,17 +1134,24 @@ header {
   bottom: 24px;
   right: 24px;
   z-index: 9998;
-  width: 56px;
-  height: 56px;
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
-  background: var(--ink);
-  border: none;
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  border: 2px solid #38bdf8;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 24px rgba(20, 20, 19, 0.3);
+  box-shadow: 0 4px 20px rgba(2, 132, 199, 0.5), 0 0 0 4px rgba(56, 189, 248, 0.2);
   transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  animation: fab-glow 2s infinite;
+}
+
+@keyframes fab-glow {
+  0% { box-shadow: 0 4px 20px rgba(2, 132, 199, 0.5), 0 0 0 0 rgba(56, 189, 248, 0.6); }
+  70% { box-shadow: 0 4px 20px rgba(2, 132, 199, 0.5), 0 0 0 12px rgba(56, 189, 248, 0); }
+  100% { box-shadow: 0 4px 20px rgba(2, 132, 199, 0.5), 0 0 0 0 rgba(56, 189, 248, 0); }
 }
 
 .samudra-fab svg {

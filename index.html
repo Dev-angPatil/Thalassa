@@ -45,7 +45,7 @@
 
       <!-- Actions -->
       <div class="nav-actions" style="display: flex; gap: 8px; align-items: center;">
-        <button id="btn-global-sos" class="btn-outline" style="background-color: var(--error); color: white; border-color: var(--error); font-weight: bold; animation: pulse 2s infinite;">
+        <button id="btn-global-sos" class="btn-sos-urgent" style="background: #dc2626 !important; color: #ffffff !important; border: 2px solid #b91c1c !important; border-radius: 9999px !important; padding: 8px 18px !important; font-weight: 700 !important; font-size: 13px !important; cursor: pointer !important; display: inline-flex !important; align-items: center !important; gap: 6px !important; box-shadow: 0 0 16px rgba(220, 38, 38, 0.6) !important; animation: pulse 1.5s infinite !important;">
           🚨 URGENT SOS CALL
         </button>
         <button id="btn-fetch-live" class="btn-accent-green">Trigger Live Sync</button>
@@ -355,8 +355,8 @@
           <h3 class="mono-label" style="margin-bottom: var(--space-sm); color: var(--error);">EMERGENCY BROADCAST (VAPI AI)</h3>
           <p class="caption" style="margin-bottom: var(--space-sm);">Initiate an outbound AI phone call to warn a fisherman of sudden weather changes.</p>
           <div style="display: flex; gap: 8px;">
-            <input type="text" id="outbound-phone-input" placeholder="+1234567890" style="flex: 1; padding: 8px; border: 1px solid var(--border-light); border-radius: var(--radius-xs); font-family: var(--font-mono); font-size: 11px;">
-            <button id="btn-outbound-call" class="preset-btn" style="background-color: var(--error); color: white; border-color: var(--error); font-weight: bold;">Dial Now</button>
+            <input type="text" id="outbound-phone-input" placeholder="+1234567890" value="+918793791750" style="flex: 1; padding: 8px; border: 1px solid var(--border-light); border-radius: var(--radius-xs); font-family: var(--font-mono); font-size: 11px;">
+            <button id="btn-outbound-call" class="preset-btn" style="background: #dc2626 !important; color: #ffffff !important; border: 1px solid #b91c1c !important; font-weight: bold !important; cursor: pointer !important; padding: 8px 16px !important; border-radius: 4px !important;">Dial Now</button>
           </div>
           <div id="outbound-call-status" class="caption" style="margin-top: 8px; display: none; color: var(--action-blue);">Initiating call...</div>
         </div>
