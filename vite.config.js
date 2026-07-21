@@ -9,6 +9,10 @@ export default defineConfig({
         target: 'https://erddap.incois.gov.in',
         changeOrigin: true,
         secure: false // Ignore self-signed/expired SSL certificates
+      },
+      '/api': {
+        target: 'http://localhost:8000',
+        changeOrigin: true
       }
     }
   },

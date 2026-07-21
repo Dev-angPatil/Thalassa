@@ -50,6 +50,7 @@ let conservationLayerGroup = null;
 let portsLayerGroup = null;
 let currentsLayerGroup = null;
 let gridLinesLayerGroup = null;
+let clustersLayerGroup = null;
 
 // Interactive Highlights & Vessel Layers
 let hoverOutline = null;
@@ -132,6 +133,7 @@ function init() {
   portsLayerGroup = L.layerGroup().addTo(map);
   currentsLayerGroup = L.layerGroup().addTo(map);
   gridLinesLayerGroup = L.layerGroup().addTo(map);
+  clustersLayerGroup = L.layerGroup().addTo(map);
 
   // Set up hover highlight layer
   hoverOutline = L.rectangle([[0, 0], [0, 0]], {
@@ -391,6 +393,7 @@ function updateGrid() {
   }
 
   updateSidebarLists();
+  updateFishClusters();
 }
 
 // Redraw styles of native Leaflet vectors
@@ -1671,3 +1674,49 @@ function addLegendItem(color, text, type = 'box') {
   `;
   container.appendChild(item);
 }
+
+async function updateFishClusters() {
+  if (!clustersLayerGroup) return;
+  clustersLayerGroup.clearLayers();
+  
+  if (currentMode !== 'fisherman') return;
+  
+  const speciesSelect = document.getElementById('species-selector');
+  const species = speciesSelect ? speciesSelect.value : 'sardine';
+  const currentMonth = Math.floor((dayOfYear / 365) * 12) + 1;
+
+  try {
+    const res = await fetch(`/api/clusters?species=${species}&month=${currentMonth}`);
+    const data = await res.json();
+
+    if (data && data.clusters) {
+      data.clusters.forEach(cluster => {
+        if (cluster.hull_polygon && cluster.hull_polygon.length > 0) {
+          const polygonCoords = cluster.hull_polygon.map(p => [p.lat, p.lng]);
+          
+          const poly = L.polygon(polygonCoords, {
+            color: 'var(--action-blue, #1863dc)',
+            weight: 1.5,
+            dashArray: '4, 6',
+            fillColor: 'var(--action-blue, #1863dc)',
+            fillOpacity: 0.12,
+            className: 'fish-cluster-hull'
+          }).addTo(clustersLayerGroup);
+
+          poly.bindTooltip(`
+            <div style="font-family: var(--font-body); font-size: 11px; line-height: 1.4; padding: 4px;">
+              <strong style="color: var(--action-blue); font-size: 12px;">Dynamic ML Cluster #${cluster.cluster_id}</strong><br>
+              <strong>Density:</strong> ${cluster.points_count} catch reports<br>
+              <strong>Avg SST:</strong> ${cluster.avg_sst.toFixed(1)} °C<br>
+              <strong>Avg Chlorophyll:</strong> ${cluster.avg_chlorophyll.toFixed(2)} mg/m³<br>
+              <strong>Est Yield:</strong> ${Math.round(cluster.avg_yield)} kg/day
+            </div>
+          `, { sticky: true });
+        }
+      });
+    }
+  } catch (err) {
+    console.warn("Failed to fetch clusters from Python FastAPI ML service", err);
+  }
+}
+

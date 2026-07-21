@@ -6,4 +6,7 @@ submission/
 *.log
 docs/
 .agents/
+__pycache__/
+*.csv
+
 
