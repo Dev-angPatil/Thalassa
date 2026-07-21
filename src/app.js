@@ -271,6 +271,50 @@ function init() {
   // Initialize Samudra AI Voice Assistant
   initSamudra();
 
+  // ─── Periodic State Sync to Backend for AI Voice Calls ───
+  // Push live dashboard state to server.js every 5 seconds
+  // so the Vapi AI agent can reference real map data during phone calls.
+  setInterval(() => {
+    try {
+      const state = getThalassaState();
+      // Only send a compact subset to avoid huge payloads
+      const payload = {
+        selectedCell: state.selectedCell ? {
+          lat: state.selectedCell.lat,
+          lng: state.selectedCell.lng,
+          sst: state.selectedCell.sst,
+          chl: state.selectedCell.chl,
+          waveHeight: state.selectedCell.waveHeight,
+          windSpeed: state.selectedCell.windSpeed,
+          fishingScore: state.selectedCell.fishingScore,
+          conservationScore: state.selectedCell.conservationScore,
+          minDistanceToCoast: state.selectedCell.minDistanceToCoast,
+          favorabilityReasons: state.selectedCell.favorabilityReasons,
+          sensitivityReasons: state.selectedCell.sensitivityReasons,
+          isMPA: state.selectedCell.isMPA,
+          spawningBanActive: state.selectedCell.spawningBanActive
+        } : null,
+        selectedPort: state.selectedPort,
+        selectedSpecies: state.selectedSpecies,
+        currentMode: state.currentMode,
+        dayOfYear: state.dayOfYear,
+        weatherCache: state.weatherCache,
+        optimizedRoute: state.optimizedRoute ? {
+          distanceKM: state.optimizedRoute.distanceKM,
+          stdDistanceKM: state.optimizedRoute.stdDistanceKM,
+          cutsSpawningBan: state.optimizedRoute.cutsSpawningBan
+        } : null
+      };
+      fetch('https://thalassa-pdcq.onrender.com/api/sync-state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }).catch(() => {}); // Silent fail if server not running
+    } catch (e) {
+      // Ignore sync errors
+    }
+  }, 5000);
+
   // Start the animation frame loop
   requestAnimationFrame(tick);
 }
@@ -709,6 +753,85 @@ function setupEventListeners() {
 
   // Live API Fetch trigger
   document.getElementById('btn-fetch-live').addEventListener('click', triggerLiveApiFetch);
+
+  // Global SOS Button trigger
+  const btnGlobalSos = document.getElementById('btn-global-sos');
+  if (btnGlobalSos) {
+    btnGlobalSos.addEventListener('click', async () => {
+      const phoneInput = "+918793791750";
+      
+      const originalText = btnGlobalSos.textContent;
+      btnGlobalSos.textContent = "DIALING...";
+      btnGlobalSos.disabled = true;
+      
+      try {
+        const res = await fetch('https://thalassa-pdcq.onrender.com/api/outbound', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phoneNumber: phoneInput })
+        });
+        
+        const data = await res.json();
+        if (data.success) {
+          showToast("🚨 SOS Call connected! AI is warning the fisherman.", "green");
+        } else {
+          showToast("SOS Call failed: " + (data.error || 'Unknown error'), "red");
+        }
+      } catch (err) {
+        showToast("Could not reach backend server. Make sure server.js is running.", "red");
+      } finally {
+        setTimeout(() => {
+          btnGlobalSos.disabled = false;
+          btnGlobalSos.textContent = originalText;
+        }, 5000);
+      }
+    });
+  }
+
+  // Vapi Outbound Call trigger
+  const btnOutbound = document.getElementById('btn-outbound-call');
+  if (btnOutbound) {
+    btnOutbound.addEventListener('click', async () => {
+      const phoneInput = document.getElementById('outbound-phone-input').value;
+      const statusDiv = document.getElementById('outbound-call-status');
+      if (!phoneInput) {
+        showToast("Please enter a valid phone number.", "red");
+        return;
+      }
+      
+      btnOutbound.disabled = true;
+      statusDiv.style.display = 'block';
+      statusDiv.textContent = 'Initiating call...';
+      
+      try {
+        const res = await fetch('https://thalassa-pdcq.onrender.com/api/outbound', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phoneNumber: phoneInput })
+        });
+        
+        const data = await res.json();
+        if (data.success) {
+          statusDiv.style.color = 'var(--primary-color)';
+          statusDiv.textContent = 'Call connected! Fisherman phone is ringing.';
+          showToast("Outbound call successful.", "green");
+        } else {
+          statusDiv.style.color = 'var(--error)';
+          statusDiv.textContent = 'Call failed. Check server logs.';
+          showToast("Outbound call failed: " + (data.error || 'Unknown error'), "red");
+        }
+      } catch (err) {
+        statusDiv.style.color = 'var(--error)';
+        statusDiv.textContent = 'Server unreachable. Is server.js running?';
+        showToast("Could not reach backend server.", "red");
+      } finally {
+        setTimeout(() => {
+          btnOutbound.disabled = false;
+          statusDiv.style.display = 'none';
+        }, 5000);
+      }
+    });
+  }
 
   // Preset Scenario selectors
   document.getElementById('preset-monsoon').addEventListener('click', () => {
@@ -1952,6 +2075,174 @@ function initSamudra() {
   }
 
   console.log('[Thalassa] Samudra AI Voice Assistant initialized.');
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PHONE CALL OVERLAY — Integration
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  const phoneCallFab = document.getElementById('phone-call-fab');
+  const phoneOverlay = document.getElementById('phone-call-overlay');
+  const callStateDialing = document.getElementById('call-state-dialing');
+  const callStateActive = document.getElementById('call-state-active');
+  const callStateEnded = document.getElementById('call-state-ended');
+  const callTimerEl = document.getElementById('call-timer');
+  const callWaveform = document.getElementById('call-waveform');
+  const callTranscriptScroll = document.getElementById('call-transcript-scroll');
+  const callCancelBtn = document.getElementById('call-cancel-btn');
+  const callEndBtn = document.getElementById('call-end-btn');
+  const callMuteBtn = document.getElementById('call-mute-btn');
+  const callSpeakerBtn = document.getElementById('call-speaker-btn');
+  const callSosBtn = document.getElementById('call-sos-btn');
+  const callAgainBtn = document.getElementById('call-again-btn');
+  const callDismissBtn = document.getElementById('call-dismiss-btn');
+  const callEndedDuration = document.getElementById('call-ended-duration');
+
+  // Show/hide call state screens
+  function setCallScreen(state) {
+    callStateDialing.style.display = state === 'dialing' ? 'flex' : 'none';
+    callStateActive.style.display = state === 'active' ? 'flex' : 'none';
+    callStateEnded.style.display = state === 'ended' ? 'flex' : 'none';
+  }
+
+  // ── Call State Change Handler ──
+  samudra.onCallStateChange = (state, data) => {
+    if (state === 'dialing') {
+      phoneOverlay.style.display = 'flex';
+      // Force reflow then add visible class for animation
+      requestAnimationFrame(() => {
+        phoneOverlay.classList.add('visible');
+      });
+      setCallScreen('dialing');
+      // Clear previous transcript
+      callTranscriptScroll.innerHTML = '';
+    } else if (state === 'active') {
+      setCallScreen('active');
+      callWaveform.classList.remove('active', 'speaking');
+    } else if (state === 'ended') {
+      setCallScreen('ended');
+      callWaveform.classList.remove('active', 'speaking');
+      if (data && data.duration) {
+        callEndedDuration.textContent = `Duration: ${data.duration}`;
+      }
+    } else if (state === 'idle') {
+      phoneOverlay.classList.remove('visible');
+      setTimeout(() => {
+        phoneOverlay.style.display = 'none';
+      }, 400);
+    }
+  };
+
+  // ── Call Timer Handler ──
+  samudra.onCallTimer = (formatted) => {
+    if (callTimerEl) callTimerEl.textContent = formatted;
+  };
+
+  // ── Call Transcript Handler ──
+  samudra.onCallTranscript = (text, sender) => {
+    const line = document.createElement('div');
+    line.className = `call-transcript-line ${sender}`;
+    line.textContent = text;
+    callTranscriptScroll.appendChild(line);
+
+    // Scroll to bottom
+    const area = document.getElementById('call-transcript-area');
+    if (area) area.scrollTop = area.scrollHeight;
+
+    // Remove "thinking" lines when a real response comes
+    if (sender === 'bot') {
+      const thinkingLines = callTranscriptScroll.querySelectorAll('.thinking');
+      thinkingLines.forEach(el => el.remove());
+    }
+  };
+
+  // ── Waveform animation sync with listening/speaking state ──
+  const originalOnStateChange = samudra.onStateChange;
+  samudra.onStateChange = (state) => {
+    // Call the original handler (chat panel)
+    if (originalOnStateChange) originalOnStateChange(state);
+
+    // Sync waveform for phone call
+    if (samudra.callState === 'active' && callWaveform) {
+      callWaveform.classList.remove('active', 'speaking');
+      if (state.isListening) {
+        callWaveform.classList.add('active');
+      } else if (state.isSpeaking) {
+        callWaveform.classList.add('speaking');
+      }
+    }
+  };
+
+  // ── Button Event Listeners ──
+
+  // Start call from FAB
+  if (phoneCallFab) {
+    phoneCallFab.addEventListener('click', () => {
+      samudra.startCall();
+    });
+  }
+
+  // Cancel call (during dialing)
+  if (callCancelBtn) {
+    callCancelBtn.addEventListener('click', () => {
+      samudra.endCall();
+      setTimeout(() => samudra.dismissCall(), 100);
+    });
+  }
+
+  // End call (during active call)
+  if (callEndBtn) {
+    callEndBtn.addEventListener('click', () => {
+      samudra.endCall();
+    });
+  }
+
+  // Mute toggle
+  if (callMuteBtn) {
+    callMuteBtn.addEventListener('click', () => {
+      const muted = samudra.toggleMute();
+      callMuteBtn.classList.toggle('active-toggle', muted);
+      // Show/hide visual feedback
+      if (muted) {
+        const label = callMuteBtn.querySelector('.call-action-label');
+        if (label) label.textContent = 'Muted';
+      } else {
+        const label = callMuteBtn.querySelector('.call-action-label');
+        if (label) label.textContent = 'Mic';
+      }
+    });
+  }
+
+  // Speaker toggle
+  if (callSpeakerBtn) {
+    callSpeakerBtn.addEventListener('click', () => {
+      const speaker = samudra.toggleSpeaker();
+      callSpeakerBtn.classList.toggle('active-toggle', speaker);
+    });
+  }
+
+  // SOS button during call
+  if (callSosBtn) {
+    callSosBtn.addEventListener('click', () => {
+      samudra.sendText('emergency SOS - I need immediate help');
+    });
+  }
+
+  // Call Again
+  if (callAgainBtn) {
+    callAgainBtn.addEventListener('click', () => {
+      samudra.dismissCall();
+      setTimeout(() => samudra.startCall(), 300);
+    });
+  }
+
+  // Dismiss (close overlay)
+  if (callDismissBtn) {
+    callDismissBtn.addEventListener('click', () => {
+      samudra.dismissCall();
+    });
+  }
+
+  console.log('[Thalassa] Phone Call overlay wired up.');
 }
 
 // Floating HTML Map Legend Population functions
