@@ -431,14 +431,14 @@ function updateMapLayers() {
         fillColor = '#ff7759'; // Coral orange
         fillOpacity = alpha * 0.6;
       } else if (activeOverlays.chl && !activeOverlays.sst) {
-        // Chlorophyll/plankton food overlay: Medium emerald green shading
+        // Chlorophyll/plankton food overlay: Dark green shading for visibility
         const alpha = Math.min(1.0, Math.max(0.1, cell.chlorophyll / 5.0));
-        fillColor = '#00b48a'; // Medium mint green
-        fillOpacity = alpha * 0.6;
+        fillColor = '#005c47'; // Rich dark green
+        fillOpacity = alpha * 0.65;
       } else if (activeOverlays.sst && activeOverlays.chl) {
-        // Combined Fishing Favorability: Vibrant glowing mint green hotspots
-        fillColor = '#00d4a4'; // Vibrant mint green
-        fillOpacity = (cell.fishingScore / 100) * 0.7;
+        // Combined Fishing Favorability: Deep rich emerald green hotspots
+        fillColor = '#004d3d'; // Deep green
+        fillOpacity = (cell.fishingScore / 100) * 0.75;
       }
     } else {
       if (activeOverlays.mpa && cell.conservationScore > 30) {
@@ -1874,11 +1874,11 @@ function updateMapLegend() {
       addLegendItem('rgba(255, 119, 89, 0.6)', 'Sea Temp (Warm/High)');
       addLegendItem('rgba(255, 119, 89, 0.15)', 'Sea Temp (Cool/Low)');
     } else if (activeOverlays.chl && !activeOverlays.sst) {
-      addLegendItem('rgba(0, 180, 138, 0.6)', 'Chlorophyll (High Food)');
-      addLegendItem('rgba(0, 180, 138, 0.15)', 'Chlorophyll (Low Food)');
+      addLegendItem('rgba(0, 92, 71, 0.65)', 'Chlorophyll (High Food)');
+      addLegendItem('rgba(0, 92, 71, 0.15)', 'Chlorophyll (Low Food)');
     } else if (activeOverlays.sst && activeOverlays.chl) {
-      addLegendItem('rgba(0, 212, 164, 0.7)', 'Optimal Yield (High)');
-      addLegendItem('rgba(0, 212, 164, 0.15)', 'Optimal Yield (Low)');
+      addLegendItem('rgba(0, 77, 62, 0.75)', 'Optimal Yield (High)');
+      addLegendItem('rgba(0, 77, 62, 0.15)', 'Optimal Yield (Low)');
     } else {
       addLegendItem('rgba(0,0,0,0)', 'No Overlay Active (Map View)');
     }
