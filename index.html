@@ -5,28 +5,31 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Matsya Drishti - Kerala Coastal Digital Twin</title>
   <link rel="stylesheet" href="/index.css">
-  <!-- Google Fonts -->
+  <!-- Google Fonts: Inter & Geist Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <!-- Leaflet CSS & JS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 </head>
 <body>
 
-  <!-- Announcement Bar (Claude Style) -->
-  <div style="background: var(--surface-dark); color: var(--on-dark); height: 36px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-family: var(--font-mono); letter-spacing: 0.5px; border-bottom: 1px solid var(--hairline-dark);">
-    <span>MATSYA DRISHTI DIGITAL TWIN PROTOTYPE — ACTIVE MONSOON KERALA GRID</span>
+  <!-- Top Promo / Announcement Bar (Mintlify Style) -->
+  <div class="promo-banner">
+    <span><span class="promo-badge">Live Grid</span> MATSYA DRISHTI DIGITAL TWIN — KERALA COASTAL OCEANOGRAPHY</span>
   </div>
 
-  <!-- Header Navigation -->
+  <!-- Header Navigation (Mintlify Style) -->
   <header>
     <div class="container nav-bar">
-      <a href="#" class="nav-logo">MATSYA DRISHTI</a>
+      <a href="#" class="nav-logo">
+        <span class="nav-logo-mark">MD</span>
+        <span>MATSYA DRISHTI</span>
+      </a>
       
       <!-- Primary Switchers Group -->
-      <div class="header-switches" style="display: flex; gap: var(--space-md); align-items: center;">
+      <div class="header-switches">
         <!-- Switcher 1: Time Mode -->
         <div class="view-switch" id="time-mode-switch">
           <button id="time-mode-realtime" class="switch-btn active">Real-Time</button>
@@ -40,28 +43,28 @@
         </div>
       </div>
 
-      <!-- Action Actions -->
+      <!-- Actions -->
       <div class="nav-actions">
-        <button id="btn-fetch-live" class="btn-outline">Trigger Live API Fetch</button>
-        <span class="mono-label" style="font-size: 10px;">GRID CELL V1.0</span>
+        <button id="btn-fetch-live" class="btn-accent-green">Trigger Live Sync</button>
+        <span class="badge-type">40x30 GRID</span>
       </div>
     </div>
   </header>
   
-  <!-- Demo Scenario Presets & Tour Bar (Claude Aesthetic) -->
+  <!-- Demo Scenario Presets Strip (Mintlify Pill Tabs) -->
   <div class="presets-bar-wrapper" id="presets-bar">
     <div class="container presets-bar">
       <div class="presets-left">
-        <span class="mono-label" style="font-size: 10px; color: var(--ink); font-weight: 700;">Scenario Presets</span>
+        <span class="mono-label">SCENARIO PRESETS</span>
         <div class="preset-buttons">
-          <button id="preset-monsoon" class="preset-btn">Scenario: Monsoon Upwelling (July)</button>
-          <button id="preset-winter" class="preset-btn">Scenario: Spawning Peak (December)</button>
-          <button id="preset-live" class="preset-btn">Scenario: Live Satellite Sync</button>
-          <button id="preset-heatwave" class="preset-btn" style="color: var(--error); border-color: var(--error);">Scenario: Heatwave & Hypoxia Shock</button>
+          <button id="preset-monsoon" class="preset-btn">Monsoon Upwelling (July)</button>
+          <button id="preset-winter" class="preset-btn">Spawning Peak (December)</button>
+          <button id="preset-live" class="preset-btn">Live Satellite Sync</button>
+          <button id="preset-heatwave" class="preset-btn" style="color: var(--brand-error); border-color: var(--brand-error);">Heatwave & Hypoxia</button>
         </div>
       </div>
       <div class="presets-right">
-        <button id="btn-start-tour" class="preset-btn highlight-btn">Start Guided Tour 🧭</button>
+        <button id="btn-start-tour" class="preset-btn highlight-btn">Guided Tour 🧭</button>
       </div>
     </div>
   </div>
@@ -120,32 +123,32 @@
         <div class="map-container">
           <div id="map" style="width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1;"></div>
           
-          <!-- Floating Map Legend (Cohere Style) -->
-          <div id="map-legend" class="hud-panel" style="position: absolute; bottom: 20px; left: 20px; z-index: 10; display: flex; flex-direction: column; align-items: stretch; gap: 8px; width: 220px; font-family: var(--font-body); font-size: 11px; pointer-events: auto;">
-            <span class="mono-label" id="legend-title" style="color: var(--ink); font-weight: 700; font-size: 9px; letter-spacing: 1px;">Yield Analysis Legend</span>
+          <!-- Floating Map Legend (Mintlify Card Style) -->
+          <div id="map-legend" class="hud-panel" style="position: absolute; bottom: 20px; left: 20px; z-index: 10; display: flex; flex-direction: column; align-items: stretch; gap: 8px; width: 230px; pointer-events: auto;">
+            <span class="mono-label" id="legend-title">YIELD ANALYSIS LEGEND</span>
             <div style="height: 1px; background: var(--hairline); margin: 2px 0;"></div>
             <div id="legend-items" style="display: flex; flex-direction: column; gap: 6px;"></div>
           </div>
         </div>
 
-        <!-- Timeline / Slider Panel -->
+        <!-- Timeline / Slider Panel (Dark Code Surface) -->
         <div class="timeline-panel" id="timeline-panel">
           <div class="timeline-controls">
-            <button id="btn-play-pause" class="play-btn">
+            <button id="btn-play-pause" class="play-btn" title="Toggle Simulation Time Playback">
               <!-- Play Icon SVG -->
-              <svg id="play-icon" width="12" height="12" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
+              <svg id="play-icon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
                 <path d="M8 5V19L19 12L8 5Z"/>
               </svg>
               <!-- Pause Icon SVG -->
-              <svg id="pause-icon" style="display:none;" width="12" height="12" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
+              <svg id="pause-icon" style="display:none;" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
                 <path d="M6 19H10V5H6V19ZM14 5V19H18V5H14Z"/>
               </svg>
             </button>
           </div>
           <div class="timeline-slider-wrapper">
-            <span class="mono-label" id="timeline-date-label">June 24 (Day 175)</span>
+            <span class="mono-label" id="timeline-date-label" style="color: var(--brand-green);">June 24 (Day 175)</span>
             <input type="range" id="timeline-slider" class="timeline-slider" min="1" max="365" value="175">
-            <span class="mono-label" style="color: var(--slate);">Dec 31</span>
+            <span class="mono-label" style="color: var(--on-dark-muted);">Dec 31</span>
           </div>
         </div>
 
@@ -157,48 +160,48 @@
         <!-- Section 1: Dashboard Context Metrics -->
         <div class="sidebar-section">
           <div class="sidebar-title">
-            <h3 class="mono-label" style="color: var(--slate); font-weight: 700;">Active Perspective</h3>
-            <span id="perspective-badge" style="background: var(--pale-green); color: var(--deep-green); padding: 4px 8px; border-radius: var(--radius-xs); font-size: 11px; font-weight: 600;">FISHERMAN VIEW</span>
+            <span class="mono-label">ACTIVE PERSPECTIVE</span>
+            <span id="perspective-badge" class="badge-tag">FISHERMAN VIEW</span>
           </div>
           
-          <h2 id="main-perspective-heading" class="card-heading" style="margin-bottom: var(--space-xs);">Optimized Fishing & Catch Advisories</h2>
+          <h2 id="main-perspective-heading" style="font-size: 20px; font-weight: 600; margin-bottom: var(--space-xs);">Optimized Fishing & Catch Advisories</h2>
           <p id="main-perspective-desc" class="caption">Real-time oceanographic routing system prioritizing harvest yields based on sea surface temperature and primary productivity chlorophyll values.</p>
         </div>
 
         <!-- Section 2: Selected Grid Cell / Detail Telemetry -->
         <div class="sidebar-section">
-          <h3 class="mono-label" style="margin-bottom: var(--space-sm);">Telemetry Details</h3>
+          <span class="mono-label" style="display: block; margin-bottom: var(--space-sm);">TELEMETRY DETAILS</span>
           
           <div class="info-card" id="telemetry-card">
             <div class="info-card-header">
               <span class="info-card-title" id="telemetry-coords">Hover or click grid cell</span>
-              <span id="cell-type-badge" class="mono-label" style="font-size: 10px;">--</span>
+              <span id="cell-type-badge" class="badge-type">--</span>
             </div>
             
-            <div style="margin: var(--space-sm) 0; height: 1px; background-color: var(--hairline);"></div>
+            <div style="margin: var(--space-sm) 0; height: 1px; background-color: var(--hairline-soft);"></div>
             
-            <!-- Tabs for Telemetry -->
-            <div class="telemetry-tabs" style="display: flex; gap: 8px; margin-bottom: var(--space-sm);">
+            <!-- Segmented Tabs for Telemetry -->
+            <div class="telemetry-tabs">
               <button class="preset-btn active" id="tab-basic" onclick="document.getElementById('pane-basic').style.display='block'; document.getElementById('pane-adv').style.display='none'; this.classList.add('active'); document.getElementById('tab-adv').classList.remove('active');">Yield</button>
               <button class="preset-btn" id="tab-adv" onclick="document.getElementById('pane-adv').style.display='block'; document.getElementById('pane-basic').style.display='none'; this.classList.add('active'); document.getElementById('tab-basic').classList.remove('active');">Environment</button>
             </div>
 
-            <!-- Basic Pane -->
+            <!-- Basic Pane (Dark Code-Style Cards) -->
             <div id="pane-basic">
               <div class="metric-row">
                 <div class="metric-box">
-                  <span class="mono-label info-tooltip-trigger" style="font-size: 9px;" data-tooltip="Sea Surface Temperature. Optimal range for pelagic fish is 26.5°C to 29.5°C. Deviations disperse fish.">SST (°C) ⓘ</span>
+                  <span class="mono-label info-tooltip-trigger" data-tooltip="Sea Surface Temperature. Optimal range for pelagic fish is 26.5°C to 29.5°C. Deviations disperse fish.">SST (°C) ⓘ</span>
                   <div class="metric-num" id="telemetry-sst">--</div>
                 </div>
                 <div class="metric-box">
-                  <span class="mono-label info-tooltip-trigger" style="font-size: 9px;" data-tooltip="Proxy for food source (plankton). Optimal: 1.0 - 4.5 mg/m³. Values >4.5 signal toxic algal bloom hypoxia.">Chlorophyll ⓘ</span>
-                  <div class="metric-num" id="telemetry-chl" style="color: var(--on-primary);">--</div>
+                  <span class="mono-label info-tooltip-trigger" data-tooltip="Proxy for food source (plankton). Optimal: 1.0 - 4.5 mg/m³. Values >4.5 signal toxic algal bloom hypoxia.">Chlorophyll ⓘ</span>
+                  <div class="metric-num" id="telemetry-chl" style="color: var(--brand-green-soft);">--</div>
                 </div>
               </div>
               <div class="metric-row">
-                <div class="metric-box">
-                  <span class="mono-label info-tooltip-trigger" style="font-size: 9px;" data-tooltip="Distance to coastline. Kerala continental shelf holds 90% of catch within 100km.">Dist to Coast ⓘ</span>
-                  <div class="metric-num" id="telemetry-coast" style="font-size: 16px; color: var(--slate); font-weight: 600;">--</div>
+                <div class="metric-box" style="grid-column: span 2;">
+                  <span class="mono-label info-tooltip-trigger" data-tooltip="Distance to coastline. Kerala continental shelf holds 90% of catch within 100km.">Dist to Coast ⓘ</span>
+                  <div class="metric-num" id="telemetry-coast" style="font-size: 16px; color: var(--on-dark);">--</div>
                 </div>
               </div>
             </div>
@@ -206,46 +209,46 @@
             <!-- Advanced Pane -->
             <div id="pane-adv" style="display: none;">
               <div class="metric-row">
-                <div class="metric-box">
-                  <span class="mono-label info-tooltip-trigger" style="font-size: 9px;" data-tooltip="Water flow velocity. Fish avoid currents >1.0 m/s, preferring mild drifts.">Current Vector ⓘ</span>
-                  <div class="metric-num" id="telemetry-currents" style="font-size: 15px; color: var(--action-blue); font-weight: 600;">--</div>
+                <div class="metric-box" style="grid-column: span 2;">
+                  <span class="mono-label info-tooltip-trigger" data-tooltip="Water flow velocity. Fish avoid currents >1.0 m/s, preferring mild drifts.">Current Vector ⓘ</span>
+                  <div class="metric-num" id="telemetry-currents" style="font-size: 15px; color: var(--brand-tag);">--</div>
                 </div>
               </div>
               <div class="metric-row">
                 <div class="metric-box">
-                  <span class="mono-label info-tooltip-trigger" style="font-size: 9px;" data-tooltip="Local wind speed/dir. High winds (>25 km/h) create rough surface states unsafe for small vessels.">Wind Forecast ⓘ</span>
-                  <div class="metric-num" id="telemetry-wind" style="font-size: 13px; color: var(--slate); font-weight: 600;">--</div>
+                  <span class="mono-label info-tooltip-trigger" data-tooltip="Local wind speed/dir. High winds (>25 km/h) create rough surface states unsafe for small vessels.">Wind Forecast ⓘ</span>
+                  <div class="metric-num" id="telemetry-wind" style="font-size: 13px; color: var(--on-dark-muted);">--</div>
                 </div>
                 <div class="metric-box">
-                  <span class="mono-label info-tooltip-trigger" style="font-size: 9px;" data-tooltip="Significant wave height and period. Waves >2.0m trigger harbor warning alerts.">Wave State ⓘ</span>
-                  <div class="metric-num" id="telemetry-wave" style="font-size: 13px; color: var(--coral); font-weight: 600;">--</div>
+                  <span class="mono-label info-tooltip-trigger" data-tooltip="Significant wave height and period. Waves >2.0m trigger harbor warning alerts.">Wave State ⓘ</span>
+                  <div class="metric-num" id="telemetry-wave" style="font-size: 13px; color: var(--brand-error);">--</div>
                 </div>
               </div>
             </div>
 
-            <div style="margin-top: var(--space-sm);">
-              <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 2px;">
+            <div style="margin-top: var(--space-md);">
+              <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px;">
                 <span style="font-weight: 500;" class="info-tooltip-trigger" data-tooltip="Combined score optimizing temperature and plankton food. Plummets by 85% in restricted spawning zones.">Fishing Favorability ⓘ</span>
-                <span id="score-favorability-label" style="font-weight: 600;">--%</span>
+                <span id="score-favorability-label" style="font-weight: 600; font-family: var(--font-mono);">--%</span>
               </div>
               <div class="gauge-container">
                 <div class="gauge-bar blue-bar" id="score-favorability-bar"></div>
               </div>
             </div>
 
-            <div style="margin-top: var(--space-sm);">
-              <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 2px;">
+            <div style="margin-top: var(--space-md);">
+              <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px;">
                 <span style="font-weight: 500;" class="info-tooltip-trigger" data-tooltip="Ecosystem vulnerability combining active spawning bans, habitat buffers, and catch pressure.">Conservation Sensitivity ⓘ</span>
-                <span id="score-sensitivity-label" style="font-weight: 600;">--%</span>
+                <span id="score-sensitivity-label" style="font-weight: 600; font-family: var(--font-mono);">--%</span>
               </div>
               <div class="gauge-container">
                 <div class="gauge-bar coral-bar" id="score-sensitivity-bar"></div>
               </div>
             </div>
 
-            <div style="margin-top: var(--space-sm);">
-              <span class="mono-label" style="font-size: 9px; margin-bottom: 4px; display: block;">12-Month Seasonal SST Trend (°C)</span>
-              <canvas id="mini-trend-chart" style="width: 100%; height: 50px; display: block; background: #fafafa; border: 1px solid var(--border-light); border-radius: var(--radius-xs);"></canvas>
+            <div style="margin-top: var(--space-md);">
+              <span class="mono-label" style="font-size: 10px; margin-bottom: 6px; display: block;">12-MONTH SEASONAL SST TREND (°C)</span>
+              <canvas id="mini-trend-chart" style="width: 100%; height: 50px; display: block; background: var(--surface-code); border: 1px solid var(--hairline-dark); border-radius: var(--radius-sm);"></canvas>
             </div>
           </div>
         </div>
@@ -258,38 +261,41 @@
           </div>
         </div>
 
-        <!-- Section 4: Optimized Route details -->
+        <!-- Section 4: Optimized Route Details (Mintlify Featured Card Style) -->
         <div class="sidebar-section" id="route-section" style="display:none;">
-          <h3 class="mono-label" style="margin-bottom: var(--space-sm);">Vessel Route Telemetry</h3>
-          <div class="info-card" style="border-left: 3px solid var(--action-blue); padding: var(--space-md);">
+          <span class="mono-label" style="display: block; margin-bottom: var(--space-sm);">VESSEL ROUTE TELEMETRY</span>
+          <div class="info-card">
             <div class="info-card-header">
               <span class="info-card-title" id="route-title">Munambam to Target Grid</span>
-              <span class="status-dot blue"></span>
+              <span class="badge-tag">A* ECO-ROUTER</span>
             </div>
-            <p class="caption" style="margin: var(--space-xxs) 0 var(--space-sm) 0;">Routing engine computes legal compliance pathways deflecting around seasonal ecological zones.</p>
+            <p class="caption" style="margin: var(--space-xs) 0 var(--space-sm) 0;">A* Eco-Router computes legally compliant pathways deflecting around seasonal spawning bans and high-sensitivity habitat buffers.</p>
             
             <div class="route-comparison-grid">
-              <!-- Standard Route (Non-Compliant) -->
+              <!-- Standard Route (Non-Compliant Alert Card) -->
               <div class="route-column standard-route">
-                <span class="mono-label" style="font-size: 8px; color: var(--error); font-weight: 700;">Standard Route</span>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span class="mono-label" style="color: var(--brand-error);">STANDARD</span>
+                  <span class="badge-required">NON-COMPLIANT</span>
+                </div>
                 <div class="comparison-metric">
                   <span class="caption">Dist:</span>
-                  <strong id="route-std-distance" style="color: var(--error);">-- km</strong>
+                  <strong id="route-std-distance" style="color: var(--brand-error);">-- km</strong>
                 </div>
                 <div class="comparison-metric">
                   <span class="caption">Time:</span>
                   <strong id="route-std-time">-- hrs</strong>
                 </div>
                 <div class="comparison-metric">
-                  <span class="caption">Fuel Cost:</span>
+                  <span class="caption">Fuel:</span>
                   <strong id="route-std-fuel">-- INR</strong>
                 </div>
                 <div class="comparison-metric">
-                  <span class="caption">Catch Val:</span>
+                  <span class="caption">Catch:</span>
                   <strong id="route-std-catch">-- INR</strong>
                 </div>
                 <div class="comparison-metric">
-                  <span class="caption">Net Profit:</span>
+                  <span class="caption">Profit:</span>
                   <strong id="route-std-profit">-- INR</strong>
                 </div>
                 <div class="comparison-status status-error" id="route-std-status">
@@ -297,28 +303,31 @@
                 </div>
               </div>
 
-              <!-- Matsya Drishti Route (Compliant) -->
+              <!-- Matsya Drishti Route (Featured Mint Card) -->
               <div class="route-column matsya-drishti-route">
-                <span class="mono-label" style="font-size: 8px; color: var(--action-blue); font-weight: 700;">Matsya Drishti Route</span>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span class="mono-label" style="color: var(--brand-green-deep);">ECO-ROUTE</span>
+                  <span class="badge-tag" style="background: rgba(0, 212, 164, 0.15); color: var(--brand-green-deep);">RECOMMENDED</span>
+                </div>
                 <div class="comparison-metric">
                   <span class="caption">Dist:</span>
-                  <strong id="route-opt-distance" style="color: var(--action-blue);">-- km</strong>
+                  <strong id="route-opt-distance" style="color: var(--primary);">-- km</strong>
                 </div>
                 <div class="comparison-metric">
                   <span class="caption">Time:</span>
-                  <strong id="route-opt-time" style="color: var(--primary-color);">-- hrs</strong>
+                  <strong id="route-opt-time">-- hrs</strong>
                 </div>
                 <div class="comparison-metric">
-                  <span class="caption">Fuel Cost:</span>
+                  <span class="caption">Fuel:</span>
                   <strong id="route-opt-fuel">-- INR</strong>
                 </div>
                 <div class="comparison-metric">
-                  <span class="caption">Catch Val:</span>
+                  <span class="caption">Catch:</span>
                   <strong id="route-opt-catch">-- INR</strong>
                 </div>
                 <div class="comparison-metric">
-                  <span class="caption">Net Profit:</span>
-                  <strong id="route-opt-profit" style="color: var(--action-blue);">-- INR</strong>
+                  <span class="caption">Profit:</span>
+                  <strong id="route-opt-profit" style="color: var(--brand-green-deep);">-- INR</strong>
                 </div>
                 <div class="comparison-status status-success">
                   ✅ Eco-Compliant
@@ -336,17 +345,17 @@
   <!-- Toast alert warnings container -->
   <div class="toast-container" id="toast-container"></div>
 
-  <!-- Interactive Guided Tour Dialog (Cohere Style) -->
-  <div id="tour-card" class="hud-panel" style="position: absolute; bottom: 80px; left: 40px; z-index: 1000; width: 340px; display: none; flex-direction: column; gap: var(--space-sm); border-left: 3px solid var(--action-blue); pointer-events: auto;">
+  <!-- Interactive Guided Tour Dialog (Mintlify Card Style) -->
+  <div id="tour-card" class="hud-panel" style="position: absolute; bottom: 80px; left: 40px; z-index: 1000; width: 340px; display: none; flex-direction: column; gap: var(--space-sm); border-left: 3px solid var(--brand-green); pointer-events: auto;">
     <div style="display: flex; justify-content: space-between; align-items: center;">
-      <span class="mono-label" id="tour-step-label" style="color: var(--action-blue); font-weight: 700; font-size: 9px; letter-spacing: 0.5px;">Guided Tour: Step 1/5</span>
-      <button id="tour-close-btn" style="border:none; background:transparent; font-family:var(--font-mono); font-size:10px; cursor:pointer; color:var(--slate);">[x]</button>
+      <span class="mono-label" id="tour-step-label" style="color: var(--brand-green-deep);">Guided Tour: Step 1/5</span>
+      <button id="tour-close-btn" style="border:none; background:transparent; font-family:var(--font-mono); font-size:12px; cursor:pointer; color:var(--steel);">[x]</button>
     </div>
-    <h4 id="tour-title" style="font-size: 14px; font-weight: 700; color: var(--cohere-black); font-family: var(--font-display);">Welcome to Matsya Drishti</h4>
-    <p id="tour-description" class="caption" style="font-size: 12px; line-height: 1.4; margin: 0;"></p>
+    <h4 id="tour-title" style="font-size: 15px; font-weight: 600; color: var(--ink);">Welcome to Matsya Drishti</h4>
+    <p id="tour-description" class="caption" style="font-size: 13px; line-height: 1.4; margin: 0;"></p>
     <div style="display: flex; justify-content: space-between; align-items: center; margin-top: var(--space-xxs);">
-      <button id="tour-prev-btn" class="btn-outline" style="padding: 4px 8px; font-size: 10px; font-family: var(--font-mono);">Prev</button>
-      <button id="tour-next-btn" class="btn-primary" style="padding: 4px 10px; font-size: 10px; font-family: var(--font-mono); height: auto; border-radius: var(--radius-xs);">Next</button>
+      <button id="tour-prev-btn" class="btn-outline" style="padding: 4px 10px; font-size: 11px;">Prev</button>
+      <button id="tour-next-btn" class="btn-accent-green" style="padding: 4px 12px; font-size: 11px;">Next</button>
     </div>
   </div>
 
