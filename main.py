@@ -194,8 +194,8 @@ class OutboundCallRequest(BaseModel):
 
 @app.post("/api/outbound")
 async def outbound_call(body: OutboundCallRequest):
-    vapi_api_key = os.environ.get("VAPI_API_KEY", "")
-    phone_number_id = os.environ.get("VAPI_PHONE_NUMBER_ID", "")
+    vapi_api_key = os.environ.get("VAPI_API_KEY", "a29ac6fa-b242-4fd8-ab8f-521f18ee6538")
+    phone_number_id = os.environ.get("VAPI_PHONE_NUMBER_ID", "621fec0e-3878-4f3e-89d6-f3ff9f09f417")
     if not vapi_api_key or not phone_number_id:
         raise HTTPException(status_code=500, detail="VAPI configuration missing on server.")
 
