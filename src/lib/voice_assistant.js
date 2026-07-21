@@ -1,8 +1,17 @@
 /**
  * Samudra — Thalassa AI Voice Assistant
  * A context-aware marine voice bot using free browser-native Web Speech APIs.
- * No API keys. No external AI services. 100% client-side.
+ * Supports both chat mode and full-screen phone call mode.
  */
+
+// ─── Default Voice Config (overridden by Voice.json) ────────────────────────
+const DEFAULT_VOICE_CONFIG = {
+  voice: { rate: 0.95, pitch: 1.0, volume: 0.9, preferredLang: 'en-IN', preferGender: 'female', emergencyRate: 1.15, emergencyPitch: 1.25, emergencyVolume: 1.0 },
+  recognition: { language: 'en-IN', continuous: true, interimResults: true, maxAlternatives: 1, silenceTimeout: 3000, autoRestartDelay: 500 },
+  call: { dialDuration: 2500, ringtonePulses: 3, maxCallDuration: 600, autoListenAfterSpeak: true, showLiveTranscript: true, subtitleDisplayTime: 8000 },
+  assistant: { name: 'Samudra', callGreeting: 'Call connected. Samudra at your service, Captain. How can I assist you today?', callEndMessage: 'Signing off, Captain. Stay safe on the waters. Samudra out.' },
+  emergencyKeywords: ['help', 'emergency', 'SOS', 'mayday', 'rescue', 'sinking', 'capsized', 'man overboard', 'fire', 'distress', 'danger', 'coast guard']
+};
 
 // ─── Proactive Questions ──────────────────────────────────────────────────────
 const PROACTIVE_QUESTIONS = [
@@ -30,8 +39,40 @@ export class SamudraAssistant {
     this.onEmergencyCall = null; // Callback to show emergency call overlay
     this.selectedVoice = null;
 
+    // ── Voice Config (loaded from Voice.json) ──
+    this.voiceConfig = DEFAULT_VOICE_CONFIG;
+
+    // ── Phone Call Mode State ──
+    this.callState = 'idle'; // 'idle' | 'dialing' | 'active' | 'ended'
+    this.callStartTime = null;
+    this.callTimerInterval = null;
+    this.callDurationSeconds = 0;
+    this.isMuted = false;
+    this.isSpeakerOn = false;
+    this.callTranscriptHistory = [];
+
+    // ── Callbacks for Phone Call UI ──
+    this.onCallStateChange = null; // (state, data) => {}
+    this.onCallTranscript = null; // (text, sender) => {} — live subtitle
+    this.onCallTimer = null; // (formattedTime) => {}
+
     this._initRecognition();
     this._selectVoice();
+    this._loadVoiceConfig();
+  }
+
+  // ── Load Voice.json Config ─────────────────────────────────────────────────
+  async _loadVoiceConfig() {
+    try {
+      const resp = await fetch('/Voice.json');
+      if (resp.ok) {
+        const config = await resp.json();
+        this.voiceConfig = { ...DEFAULT_VOICE_CONFIG, ...config };
+        console.log('[Samudra] Voice config loaded from Voice.json');
+      }
+    } catch (e) {
+      console.warn('[Samudra] Could not load Voice.json, using defaults:', e.message);
+    }
   }
 
   // ── Speech Recognition Setup ──────────────────────────────────────────────
@@ -52,12 +93,23 @@ export class SamudraAssistant {
       const transcript = event.results[0][0].transcript.trim();
       console.log(`[Samudra] Heard: "${transcript}"`);
       this._addMessage('user', transcript);
+
+      // If in call mode, send transcript to the call UI
+      if (this.callState === 'active' && this.onCallTranscript) {
+        this.onCallTranscript(transcript, 'user');
+      }
+
       this._processInput(transcript);
     };
 
     this.recognition.onerror = (event) => {
       console.warn(`[Samudra] Recognition error: ${event.error}`);
       if (event.error === 'no-speech') {
+        // In call mode, silently restart listening
+        if (this.callState === 'active' && !this.isMuted) {
+          setTimeout(() => this._autoRestartListening(), this.voiceConfig.recognition.autoRestartDelay || 500);
+          return;
+        }
         this._addMessage('bot', "I didn't catch that. Could you try again?");
       }
       this.isListening = false;
@@ -67,6 +119,11 @@ export class SamudraAssistant {
     this.recognition.onend = () => {
       this.isListening = false;
       this._emitStateChange();
+
+      // In call mode, auto-restart listening after recognition ends (continuous conversation)
+      if (this.callState === 'active' && !this.isSpeaking && !this.isMuted) {
+        setTimeout(() => this._autoRestartListening(), this.voiceConfig.recognition.autoRestartDelay || 500);
+      }
     };
   }
 
@@ -131,11 +188,12 @@ export class SamudraAssistant {
       this.synthesis.cancel();
     }
 
+    const vc = this.voiceConfig.voice || {};
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.voice = this.selectedVoice;
-    utterance.rate = priority === 'emergency' ? 1.1 : 0.95;
-    utterance.pitch = priority === 'emergency' ? 1.2 : 1.0;
-    utterance.volume = priority === 'emergency' ? 1.0 : 0.9;
+    utterance.rate = priority === 'emergency' ? (vc.emergencyRate || 1.1) : (vc.rate || 0.95);
+    utterance.pitch = priority === 'emergency' ? (vc.emergencyPitch || 1.2) : (vc.pitch || 1.0);
+    utterance.volume = priority === 'emergency' ? (vc.emergencyVolume || 1.0) : (vc.volume || 0.9);
 
     utterance.onstart = () => {
       this.isSpeaking = true;
@@ -145,6 +203,11 @@ export class SamudraAssistant {
     utterance.onend = () => {
       this.isSpeaking = false;
       this._emitStateChange();
+
+      // In call mode, auto-listen after AI finishes speaking
+      if (this.callState === 'active' && !this.isMuted && this.voiceConfig.call.autoListenAfterSpeak) {
+        setTimeout(() => this._autoRestartListening(), this.voiceConfig.recognition.autoRestartDelay || 500);
+      }
     };
 
     utterance.onerror = () => {
@@ -186,6 +249,141 @@ export class SamudraAssistant {
     this.speak(question);
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PHONE CALL MODE — Full-Screen AI Call Experience
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Start a phone call with Samudra AI.
+   * Flow: dialing → connected → auto-listen
+   */
+  startCall() {
+    if (this.callState !== 'idle' && this.callState !== 'ended') {
+      console.warn('[Samudra] Call already in progress');
+      return;
+    }
+
+    console.log('[Samudra] 📞 Starting AI phone call...');
+    this.callState = 'dialing';
+    this.callTranscriptHistory = [];
+    this.isMuted = false;
+    this.isSpeakerOn = false;
+    this._emitCallStateChange('dialing');
+
+    // Simulate dialing delay, then connect
+    const dialDuration = this.voiceConfig.call?.dialDuration || 2500;
+    setTimeout(() => {
+      this._connectCall();
+    }, dialDuration);
+  }
+
+  /**
+   * Connect the call — transition from dialing to active.
+   */
+  _connectCall() {
+    this.callState = 'active';
+    this.callStartTime = Date.now();
+    this.callDurationSeconds = 0;
+
+    // Start call timer
+    this.callTimerInterval = setInterval(() => {
+      this.callDurationSeconds = Math.floor((Date.now() - this.callStartTime) / 1000);
+      const formatted = this._formatCallTime(this.callDurationSeconds);
+      if (this.onCallTimer) this.onCallTimer(formatted);
+    }, 1000);
+
+    this._emitCallStateChange('active');
+
+    // Greet the user
+    const greeting = this.voiceConfig.assistant?.callGreeting || "Call connected. Samudra here. How can I assist you, Captain?";
+    this._addMessage('bot', greeting);
+    if (this.onCallTranscript) this.onCallTranscript(greeting, 'bot');
+    this.speak(greeting);
+  }
+
+  /**
+   * End the call gracefully.
+   */
+  endCall() {
+    if (this.callState === 'idle') return;
+
+    console.log('[Samudra] 📞 Ending call...');
+
+    // Stop everything
+    this.stopListening();
+    this.synthesis.cancel();
+    this.isSpeaking = false;
+
+    // Stop timer
+    if (this.callTimerInterval) {
+      clearInterval(this.callTimerInterval);
+      this.callTimerInterval = null;
+    }
+
+    const duration = this._formatCallTime(this.callDurationSeconds);
+    this.callState = 'ended';
+    this._emitCallStateChange('ended', { duration, seconds: this.callDurationSeconds });
+  }
+
+  /**
+   * Dismiss the call overlay and return to idle.
+   */
+  dismissCall() {
+    this.callState = 'idle';
+    this.callDurationSeconds = 0;
+    this.callStartTime = null;
+    this._emitCallStateChange('idle');
+  }
+
+  /**
+   * Toggle mute during call.
+   */
+  toggleMute() {
+    this.isMuted = !this.isMuted;
+    if (this.isMuted) {
+      this.stopListening();
+    } else if (this.callState === 'active' && !this.isSpeaking) {
+      this._autoRestartListening();
+    }
+    return this.isMuted;
+  }
+
+  /**
+   * Toggle speaker (visual only — we always use device speaker).
+   */
+  toggleSpeaker() {
+    this.isSpeakerOn = !this.isSpeakerOn;
+    return this.isSpeakerOn;
+  }
+
+  // ── Auto-Restart Listening (continuous conversation) ──
+  _autoRestartListening() {
+    if (this.callState !== 'active') return;
+    if (this.isListening) return;
+    if (this.isMuted) return;
+    if (this.isSpeaking) return;
+
+    try {
+      this.recognition.start();
+      this.isListening = true;
+      this._emitStateChange();
+    } catch (e) {
+      // Already started, ignore
+    }
+  }
+
+  _formatCallTime(seconds) {
+    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const s = (seconds % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  }
+
+  _emitCallStateChange(state, data = {}) {
+    if (this.onCallStateChange) {
+      this.onCallStateChange(state, data);
+    }
+  }
+
   // ── Intent Processing ─────────────────────────────────────────────────────
 
   async _processInput(text) {
@@ -202,6 +400,11 @@ export class SamudraAssistant {
       // Indicate we are thinking
       const statusTextElement = document.getElementById('samudra-status-text');
       if (statusTextElement) statusTextElement.textContent = 'THINKING...';
+
+      // Show thinking in call mode
+      if (this.callState === 'active' && this.onCallTranscript) {
+        this.onCallTranscript('Thinking...', 'thinking');
+      }
 
       const state = this.getState();
       const weather = state.weatherCache || {};
@@ -258,15 +461,32 @@ IMPORTANT INSTRUCTIONS:
           });
         }
         this._addMessage('bot', botText, 'emergency');
+
+        // Send to call transcript
+        if (this.callState === 'active' && this.onCallTranscript) {
+          this.onCallTranscript(botText, 'bot');
+        }
+
         this.speak(botText, 'emergency');
       } else {
         this._addMessage('bot', botText);
+
+        // Send to call transcript
+        if (this.callState === 'active' && this.onCallTranscript) {
+          this.onCallTranscript(botText, 'bot');
+        }
+
         this.speak(botText);
       }
     } catch (err) {
       console.error("[Samudra] AI Error:", err);
       const errorMsg = "Sorry, I am having trouble connecting to my AI brain right now.";
       this._addMessage('bot', errorMsg);
+
+      if (this.callState === 'active' && this.onCallTranscript) {
+        this.onCallTranscript(errorMsg, 'bot');
+      }
+
       this.speak(errorMsg);
     }
   }
@@ -343,5 +563,6 @@ IMPORTANT INSTRUCTIONS:
     this.stopEmergencyMonitor();
     this.stopListening();
     if (this.synthesis) this.synthesis.cancel();
+    if (this.callTimerInterval) clearInterval(this.callTimerInterval);
   }
 }
