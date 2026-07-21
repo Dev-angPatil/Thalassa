@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Thalassa Test Runner</title>
+    <style>
+        body { font-family: sans-serif; display: flex; height: 100vh; margin: 0; }
+        #test-ui { width: 450px; padding: 20px; overflow-y: auto; background: #f9f9f9; border-right: 1px solid #ccc; }
+        #app-frame { flex: 1; border: none; }
+        .pass { color: green; }
+        .fail { color: red; }
+        .skipped { color: #b8860b; } /* dark yellow/grayish */
+        ul { list-style: none; padding: 0; }
+        li { margin-bottom: 5px; padding: 5px; border-bottom: 1px solid #eee; }
+    </style>
+</head>
+<body>
+    <div id="test-ui">
+        <h2>Thalassa Tests</h2>
+        <div id="stats"><strong>Status:</strong> Waiting for app...</div>
+        <ul id="results"></ul>
+    </div>
+    <iframe id="app-frame" src="../index.html"></iframe>
+    <script src="test_cases.js"></script>
+    <script>
+        const iframe = document.getElementById('app-frame');
+        const resultsList = document.getElementById('results');
+        const statsEl = document.getElementById('stats');
+
+        let passed = 0, failed = 0, total = 0;
+
+        function updateStats() {
+            statsEl.innerHTML = `<strong>Total:</strong> ${total} | <strong>Passed:</strong> <span class="pass">${passed}</span> | <strong>Failed:</strong> <span class="fail">${failed}</span>`;
+        }
+
+        function logResult(name, status, message = "") {
+            const li = document.createElement('li');
+            li.className = status;
+            li.innerHTML = `<strong>${name}</strong><br>Status: ${status} <em>${message}</em>`;
+            resultsList.appendChild(li);
+            updateStats();
+        }
+
+        async function runTests() {
+            statsEl.innerHTML = '<strong>Status:</strong> Running...';
+            for (const test of testCases) {
+                total++;
+                try {
+                    const result = await test.fn(iframe);
+                    if (result === 'skipped') {
+                        logResult(test.name, 'skipped', '(Skipped/Unimplemented)');
+                    } else {
+                        passed++;
+                        logResult(test.name, 'pass');
+                    }
+                } catch (e) {
+                    failed++;
+                    logResult(test.name, 'fail', e.message);
+                }
+                updateStats();
+            }
+            statsEl.innerHTML += ' <strong>(Done)</strong>';
+        }
+
+        iframe.onload = () => {
+            setTimeout(runTests, 1000);
+        };
+    </script>
+</body>
+</html>

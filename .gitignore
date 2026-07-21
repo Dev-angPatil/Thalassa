@@ -5,3 +5,5 @@ dist/
 submission/
 *.log
 docs/
+.agents/
+

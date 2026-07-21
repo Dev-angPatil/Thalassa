@@ -1,48 +1,52 @@
 /* 
   Thalassa - Design System & UI Styles
-  Aesthetic: Stark white canvases, deep green-black accents, precise hairline dividers,
-             and rounded media panels inspired by Cohere's editorial design layout.
+  Aesthetic: Claude Warm Editorial Design. Tinted cream canvas, serif display typography,
+             coral primary CTAs, soft cream card surfaces, and dark navy product surfaces.
 */
-
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Space+Mono&family=Inter:wght@400;500;600&display=swap');
 
 /* --- Design Tokens --- */
 :root {
-  /* Colors */
-  --cohere-black: #000000;
-  --primary-color: #17171c;
-  --ink: #212121;
-  --deep-green: #003c33;
-  --dark-navy: #071829;
-  --canvas: #ffffff;
-  --soft-stone: #eeece7;
-  --pale-green: #edfce9;
-  --pale-blue: #f1f5ff;
-  --hairline: #d9d9dd;
-  --border-light: #e5e7eb;
-  --card-border: #f2f2f2;
-  --muted: #93939f;
-  --slate: #75758a;
-  --body-muted: #616161;
+  /* Colors (Claude System) */
+  --primary-color: #cc785c; /* Warm Coral */
+  --primary-active: #a9583e;
+  --primary-disabled: #e6dfd8;
+  --ink: #141413; /* Warm off-black text */
+  --canvas: #faf9f5; /* Warm Tinted Cream Canvas */
+  --surface-soft: #f5f0e8; /* Section divider / Soft background */
+  --surface-card: #efe9de; /* Light Cream Card Surface */
+  --surface-cream-strong: #e8e0d2;
+  --surface-dark: #181715; /* Dark navy product surface */
+  --surface-dark-soft: #1f1e1b;
+  --surface-dark-elevated: #252320;
+  
+  --hairline: #e6dfd8; /* Tinted border line */
+  --hairline-dark: rgba(255, 255, 255, 0.1);
+  --muted: #6c6a64;
+  --slate: #8e8b82;
+  --body-muted: #3d3d3a;
+  
+  --accent-teal: #5db8a6;
+  --accent-amber: #e8a55a;
   --action-blue: #1863dc;
-  --focus-blue: #4c6ee6;
   --coral: #ff7759;
-  --coral-soft: #ffad9b;
   --on-primary: #ffffff;
-  --error: #b30000;
+  --on-dark: #faf9f5;
+  --on-dark-soft: #a09d96;
+  --error: #c64545;
+  --success: #5db872;
 
   /* Typography */
-  --font-display: 'Space Grotesk', 'Inter', sans-serif;
-  --font-body: 'Inter', sans-serif;
-  --font-mono: 'Space Mono', monospace;
+  --font-display: 'Cormorant Garamond', Garamond, 'Times New Roman', serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'Space Mono', 'JetBrains Mono', monospace;
 
-  /* Radius */
+  /* Radius (Hierarchical scale) */
   --radius-xs: 4px;
-  --radius-sm: 8px;
-  --radius-md: 16px;
-  --radius-lg: 22px;
-  --radius-xl: 30px;
-  --radius-pill: 32px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-pill: 9999px;
 
   /* Spacing */
   --space-xxs: 4px;
@@ -52,11 +56,11 @@
   --space-lg: 24px;
   --space-xl: 32px;
   --space-xxl: 48px;
-  --space-section: 80px;
+  --space-section: 96px;
 
-  /* Shadows (Minimal or None for Cohere Flat styling) */
-  --shadow-subtle: 0 1px 3px rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.04);
-  --shadow-focus: 0 0 0 3px rgba(76, 110, 230, 0.2);
+  /* Shadows (Hierarchical & Subtle) */
+  --shadow-subtle: 0 1px 3px rgba(20,20,19,0.08);
+  --shadow-focus: 0 0 0 3px rgba(204, 120, 92, 0.25);
 }
 
 /* --- Base Rules --- */
@@ -70,7 +74,7 @@ body {
   font-family: var(--font-body);
   background-color: var(--canvas);
   color: var(--ink);
-  line-height: 1.5;
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -78,26 +82,27 @@ body {
 /* Typography Utilities */
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-display);
-  font-weight: 400;
-  color: var(--cohere-black);
+  font-weight: 500;
+  letter-spacing: -0.5px;
+  color: var(--ink);
 }
 
 .hero-display {
-  font-size: 72px;
-  line-height: 1.0;
-  letter-spacing: -1.92px;
+  font-size: 64px;
+  line-height: 1.05;
+  letter-spacing: -1.5px;
 }
 
 .section-display {
   font-size: 44px;
   line-height: 1.1;
-  letter-spacing: -1.2px;
+  letter-spacing: -1px;
 }
 
 .card-heading {
   font-size: 24px;
   line-height: 1.2;
-  letter-spacing: -0.32px;
+  letter-spacing: -0.3px;
 }
 
 .mono-label {
@@ -143,24 +148,22 @@ header {
 }
 
 .nav-logo {
-  font-family: var(--font-mono);
-  font-weight: 700;
-  font-size: 16px;
-  letter-spacing: 2px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 20px;
+  letter-spacing: -0.3px;
   text-decoration: none;
-  color: var(--cohere-black);
+  color: var(--ink);
   display: flex;
   align-items: center;
   gap: var(--space-xs);
 }
 
 .nav-logo::before {
-  content: "";
+  content: "✦";
+  color: var(--primary-color);
+  font-size: 18px;
   display: inline-block;
-  width: 12px;
-  height: 12px;
-  background-color: var(--deep-green);
-  border-radius: 50%;
 }
 
 .nav-links {
@@ -242,15 +245,59 @@ header {
 }
 
 .hud-panel {
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(8px);
+  background: rgba(250, 249, 245, 0.92);
+  backdrop-filter: blur(12px);
   border: 1px solid var(--hairline);
-  border-radius: var(--radius-sm);
-  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
   box-shadow: var(--shadow-subtle);
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
+  gap: var(--space-md);
+  pointer-events: auto;
+}
+
+.hud-control-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xxs);
+}
+
+.hud-control-item .mono-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  margin-bottom: 2px;
+}
+
+.hud-panel select {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+  padding: 6px 32px 6px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  background-color: var(--canvas);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%23cc785c' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 10px 6px;
+  appearance: none;
+  -webkit-appearance: none;
+  outline: none;
+  cursor: pointer;
+  min-width: 170px;
+  transition: all 0.15s ease;
+}
+
+.hud-panel select:hover {
+  border-color: var(--primary-color);
+}
+
+.hud-panel select:focus {
+  border-color: var(--primary-color);
+  box-shadow: var(--shadow-focus);
 }
 
 /* Switch & Controls */
@@ -276,7 +323,7 @@ header {
 
 .switch-btn.active {
   background: var(--canvas);
-  color: var(--cohere-black);
+  color: var(--ink);
   box-shadow: var(--shadow-subtle);
 }
 
@@ -323,15 +370,15 @@ header {
 }
 
 .info-card {
-  background-color: var(--canvas);
+  background-color: var(--surface-card);
   border: 1px solid var(--hairline);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-lg);
   padding: var(--space-md);
   transition: border-color 0.15s ease;
 }
 
 .info-card:hover {
-  border-color: var(--slate);
+  border-color: var(--primary-color);
 }
 
 .info-card-header {
@@ -367,7 +414,7 @@ header {
   font-family: var(--font-mono);
   font-size: 20px;
   font-weight: 700;
-  color: var(--deep-green);
+  color: var(--ink);
   margin-top: 4px;
 }
 
@@ -474,14 +521,14 @@ header {
   padding: 10px 20px;
   font-family: var(--font-body);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: background-color 0.15s ease;
   text-decoration: none;
 }
 
 .btn-primary:hover {
-  background-color: var(--cohere-black);
+  background-color: var(--primary-active);
 }
 
 .btn-outline {
@@ -495,7 +542,7 @@ header {
   padding: 8px 16px;
   font-family: var(--font-body);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.15s ease;
   text-decoration: none;
@@ -517,17 +564,24 @@ header {
   background: transparent;
   border: 1px solid var(--hairline);
   color: var(--slate);
-  padding: 6px 12px;
-  border-radius: var(--radius-xl);
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-body);
   font-size: 12px;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
-.layer-badge.active {
+.layer-badge:hover {
   border-color: var(--primary-color);
   color: var(--primary-color);
-  background: var(--soft-stone);
+}
+
+.layer-badge.active {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+  color: var(--on-primary);
 }
 
 /* Toast Alerts */
@@ -798,4 +852,61 @@ header {
   pointer-events: auto !important;
 }
 
+
+/* Smooth hover highlight */
+.hover-outline-smooth {
+  transition: all 0.2s ease-in-out;
+}
+
+/* High-contrast Dark Navy Card for Route Telemetry (Claude product mockup style) */
+#route-section .info-card {
+  background-color: var(--surface-dark);
+  color: var(--on-dark);
+  border: 1px solid var(--surface-dark-soft);
+  border-left: 4px solid var(--primary-color);
+}
+
+#route-section .info-card .info-card-title,
+#route-section .info-card h4,
+#route-section .info-card h5,
+#route-section .info-card strong {
+  color: var(--on-dark);
+}
+
+#route-section .info-card .caption {
+  color: var(--on-dark-soft);
+}
+
+#route-section .info-card .metric-box {
+  background-color: var(--surface-dark-soft);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+#route-section .info-card .metric-num {
+  color: var(--on-dark);
+}
+
+#route-section .info-card .route-column {
+  background-color: var(--surface-dark-soft);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+#route-section .info-card .route-column.standard-route {
+  border-left: 3px solid var(--error);
+}
+
+#route-section .info-card .route-column.thalassa-route {
+  border-left: 3px solid var(--primary-color);
+  background-color: var(--surface-dark-elevated);
+}
+
+#route-section .info-card .comparison-status.status-success {
+  background-color: rgba(93, 184, 114, 0.15);
+  color: var(--success);
+}
+
+#route-section .info-card .comparison-status.status-error {
+  background-color: rgba(198, 69, 69, 0.15);
+  color: var(--error);
+}
 

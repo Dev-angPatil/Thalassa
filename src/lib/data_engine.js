@@ -18,8 +18,15 @@ const LNG_MIN = 74.5;
 const LNG_MAX = 77.5;
 
 // Grid size configuration
-const GRID_ROWS = 24;
-const GRID_COLS = 18;
+const GRID_ROWS = 40;
+const GRID_COLS = 30;
+
+/**
+ * Get current grid dimensions
+ */
+export function getGridDimensions() {
+  return { rows: GRID_ROWS, cols: GRID_COLS };
+}
 
 /**
  * Determine if a point is inside a polygon using ray-casting algorithm
@@ -160,11 +167,17 @@ export function generateDigitalTwinGrid(dayOfYear, liveData = null) {
 
       // Overlay historical fishing catch pressure (higher pressure increases sensitivity to collapse)
       let nearestDistrict = null;
-      let minDistrictDist = Infinity;
-      for (const dist of DISTRICT_CATCH_DATA) {
-        // Approximate district coordinates by matching closest coastline points
-        const cpt = KERALA_COASTLINE.find(c => c.lat.toFixed(1) === (lat).toFixed(1));
-        if (cpt) nearestDistrict = dist;
+      if (nearestCoastPoint) {
+        const clat = nearestCoastPoint.lat;
+        let districtName = "";
+        if (clat <= 8.6) districtName = "Thiruvananthapuram";
+        else if (clat <= 9.0) districtName = "Kollam";
+        else if (clat <= 9.7) districtName = "Alappuzha";
+        else if (clat <= 10.3) districtName = "Ernakulam";
+        else if (clat <= 11.6) districtName = "Kozhikode";
+        else districtName = "Kannur";
+
+        nearestDistrict = DISTRICT_CATCH_DATA.find(d => d.district === districtName);
       }
       if (nearestDistrict) {
         const pressureWeight = nearestDistrict.historicalOverfishingIndex * 20;
@@ -246,83 +259,6 @@ export function generateDigitalTwinGrid(dayOfYear, liveData = null) {
  * Calculates the best fishing path from a port to high-scoring fishing zones,
  * avoiding restricted conservation zones.
  */
-export function calculateOptimizedRoute(portId, targetCell, grid, dayOfYear = 175) {
-  const port = FISHING_HARBORS.find(h => h.id === portId);
-  if (!port || !targetCell) return null;
-
-  const currentMonth = Math.floor((dayOfYear / 365) * 12) + 1;
-  const steps = 12;
-  const startLat = port.lat;
-  const startLng = port.lng;
-  const endLat = targetCell.lat;
-  const endLng = targetCell.lng;
-
-  // 1. Calculate Standard Route (Straight Path & Ban Violations)
-  const stdPath = [];
-  let cutsSpawningBan = false;
-
-  for (let i = 0; i <= steps; i++) {
-    const ratio = i / steps;
-    const pt = {
-      lat: startLat + (endLat - startLat) * ratio,
-      lng: startLng + (endLng - startLng) * ratio
-    };
-    stdPath.push(pt);
-
-    // Check if this point crosses any active conservation ban
-    for (const zone of CONSERVATION_ZONES) {
-      if (zone.restrictedMonths.includes(currentMonth) && isPointInPolygon(pt, zone.polygon)) {
-        cutsSpawningBan = true;
-      }
-    }
-  }
-
-  let stdDist = 0;
-  for (let i = 0; i < stdPath.length - 1; i++) {
-    stdDist += getDistanceKM(stdPath[i].lat, stdPath[i].lng, stdPath[i+1].lat, stdPath[i+1].lng);
-  }
-
-  // 2. Calculate Thalassa Optimized Route (Deflecting around active spawning bans)
-  const path = [];
-  path.push({ lat: startLat, lng: startLng });
-
-  for (let i = 1; i < steps; i++) {
-    const ratio = i / steps;
-    let intermediateLat = startLat + (endLat - startLat) * ratio;
-    let intermediateLng = startLng + (endLng - startLng) * ratio;
-
-    // Check if straight line cuts through any restricted zones
-    // If so, apply a simple deflection vector perpendicular to the line
-    for (const zone of CONSERVATION_ZONES) {
-      if (zone.restrictedMonths.includes(currentMonth) && isPointInPolygon({ lat: intermediateLat, lng: intermediateLng }, zone.polygon)) {
-        // Deflect westward (seaward) out of the zone
-        intermediateLng -= 0.18; // Shift left
-      }
-    }
-
-    path.push({ lat: intermediateLat, lng: intermediateLng });
-  }
-
-  // Add end target point
-  path.push({ lat: endLat, lng: endLng });
-
-  // Calculate total path distance
-  let totalDist = 0;
-  for (let i = 0; i < path.length - 1; i++) {
-    totalDist += getDistanceKM(path[i].lat, path[i].lng, path[i+1].lat, path[i+1].lng);
-  }
-
-  return {
-    portName: port.name,
-    targetCell: { lat: endLat, lng: endLng },
-    path: path,
-    distanceKM: Math.round(totalDist),
-    estTimeHours: parseFloat((totalDist / 18).toFixed(1)), // Estimating 18 km/h vessel speed
-    stdDistanceKM: Math.round(stdDist),
-    stdTimeHours: parseFloat((stdDist / 18).toFixed(1)),
-    cutsSpawningBan: cutsSpawningBan
-  };
-}
 
 /**
  * Helper to find nearest coordinate in live API datasets
@@ -339,4 +275,173 @@ function findNearestLivePoint(point, points) {
   }
   // Clamp match to a reasonable spatial distance (e.g. 50km)
   return minDistance < 50 ? nearest : null;
+}
+
+
+export function calculateOptimizedRoute(portId, targetCell, grid, dayOfYear = 175) {
+  const port = FISHING_HARBORS.find(h => h.id === portId);
+  if (!port || !targetCell) return null;
+
+  const currentMonth = Math.floor((dayOfYear / 365) * 12) + 1;
+
+  // Function to find nearest grid cell
+  function getNearestGridCell(lat, lng) {
+    let nearest = null;
+    let minDistance = Infinity;
+    for (const cell of grid) {
+      const dist = getDistanceKM(lat, lng, cell.lat, cell.lng);
+      if (dist < minDistance) {
+        minDistance = dist;
+        nearest = cell;
+      }
+    }
+    return nearest;
+  }
+
+  const startGridCell = getNearestGridCell(port.lat, port.lng);
+  const targetGridCell = getNearestGridCell(targetCell.lat, targetCell.lng);
+
+  if (!startGridCell || !targetGridCell) return null;
+
+  function heuristic(a, b) {
+    return getDistanceKM(a.lat, a.lng, b.lat, b.lng);
+  }
+
+  function getNeighbors(cell) {
+    const neighbors = [];
+    const dirs = [
+      [-1, 0], [1, 0], [0, -1], [0, 1],
+      [-1, -1], [-1, 1], [1, -1], [1, 1]
+    ];
+    for (const [dr, dc] of dirs) {
+      const nr = cell.row + dr;
+      const nc = cell.col + dc;
+      if (nr >= 0 && nr < GRID_ROWS && nc >= 0 && nc < GRID_COLS) {
+        neighbors.push(grid[nr * GRID_COLS + nc]);
+      }
+    }
+    return neighbors;
+  }
+
+  function aStar(start, target, avoidRestricted) {
+    const openSet = [start];
+    const cameFrom = new Map();
+    const gScore = new Map();
+    const fScore = new Map();
+
+    const getGridId = (c) => `${c.row},${c.col}`;
+    
+    gScore.set(getGridId(start), 0);
+    fScore.set(getGridId(start), heuristic(start, target));
+
+    while (openSet.length > 0) {
+      openSet.sort((a, b) => (fScore.get(getGridId(a)) ?? Infinity) - (fScore.get(getGridId(b)) ?? Infinity));
+      const current = openSet.shift();
+
+      if (current.row === target.row && current.col === target.col) {
+        const path = [current];
+        let curr = current;
+        while (cameFrom.has(getGridId(curr))) {
+          curr = cameFrom.get(getGridId(curr));
+          path.unshift(curr);
+        }
+        return path;
+      }
+
+      const neighbors = getNeighbors(current);
+      for (const neighbor of neighbors) {
+        if (neighbor.isLand && (neighbor.row !== start.row || neighbor.col !== start.col) && (neighbor.row !== target.row || neighbor.col !== target.col)) continue;
+        
+        let penalty = 0;
+        let isRestricted = false;
+        
+        for (const zone of CONSERVATION_ZONES) {
+          if (zone.restrictedMonths.includes(currentMonth) && isPointInPolygon({ lat: neighbor.lat, lng: neighbor.lng }, zone.polygon)) {
+            isRestricted = true;
+            break;
+          }
+        }
+        
+        if (avoidRestricted && isRestricted) {
+          continue;
+        }
+
+        const moveCost = getDistanceKM(current.lat, current.lng, neighbor.lat, neighbor.lng);
+        const tentativeGScore = (gScore.get(getGridId(current)) ?? Infinity) + moveCost + penalty;
+
+        if (tentativeGScore < (gScore.get(getGridId(neighbor)) ?? Infinity)) {
+          cameFrom.set(getGridId(neighbor), current);
+          gScore.set(getGridId(neighbor), tentativeGScore);
+          fScore.set(getGridId(neighbor), tentativeGScore + heuristic(neighbor, target));
+
+          if (!openSet.find(c => c.row === neighbor.row && c.col === neighbor.col)) {
+            openSet.push(neighbor);
+          }
+        }
+      }
+    }
+    return [];
+  }
+
+  function smoothPath(path) {
+    if (path.length <= 2) return path.map(p => ({ lat: p.lat, lng: p.lng }));
+    
+    const smoothed = [{ lat: path[0].lat, lng: path[0].lng }];
+    for (let i = 1; i < path.length - 1; i++) {
+      const prev = smoothed[smoothed.length - 1];
+      const curr = path[i];
+      const next = path[i + 1];
+      
+      smoothed.push({
+        lat: (prev.lat + curr.lat * 2 + next.lat) / 4,
+        lng: (prev.lng + curr.lng * 2 + next.lng) / 4
+      });
+    }
+    smoothed.push({ lat: path[path.length - 1].lat, lng: path[path.length - 1].lng });
+    return smoothed;
+  }
+
+  const stdPathCells = aStar(startGridCell, targetGridCell, false);
+  let optPathCells = aStar(startGridCell, targetGridCell, true);
+  
+  if (optPathCells.length === 0) {
+      // do not fall back
+  }
+
+  const stdPath = smoothPath(stdPathCells);
+  const optPath = optPathCells.length > 0 ? smoothPath(optPathCells) : [];
+
+  let cutsSpawningBan = false;
+  for (const cell of stdPathCells) {
+    for (const zone of CONSERVATION_ZONES) {
+      if (zone.restrictedMonths.includes(currentMonth) && isPointInPolygon({ lat: cell.lat, lng: cell.lng }, zone.polygon)) {
+        cutsSpawningBan = true;
+        break;
+      }
+    }
+    if (cutsSpawningBan) break;
+  }
+
+  function getPathDistance(path) {
+    let d = 0;
+    for (let i = 0; i < path.length - 1; i++) {
+      d += getDistanceKM(path[i].lat, path[i].lng, path[i+1].lat, path[i+1].lng);
+    }
+    return d;
+  }
+
+  const totalDist = optPath.length > 0 ? getPathDistance(optPath) : 0;
+  const stdDist = getPathDistance(stdPath);
+
+  return {
+    portName: port.name,
+    targetCell: { lat: targetCell.lat, lng: targetCell.lng },
+    path: optPath,
+    stdPath: stdPath,
+    distanceKM: Math.round(totalDist),
+    estTimeHours: parseFloat((totalDist / 18).toFixed(1)),
+    stdDistanceKM: Math.round(stdDist),
+    stdTimeHours: parseFloat((stdDist / 18).toFixed(1)),
+    cutsSpawningBan: cutsSpawningBan
+  };
 }

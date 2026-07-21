@@ -5,14 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Thalassa - Kerala Coastal Digital Twin</title>
   <link rel="stylesheet" href="/index.css">
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <!-- Leaflet CSS & JS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 </head>
 <body>
 
-  <!-- Announcement Bar (Cohere Style) -->
-  <div style="background: var(--cohere-black); color: var(--on-dark); height: 36px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-family: var(--font-mono); letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+  <!-- Announcement Bar (Claude Style) -->
+  <div style="background: var(--surface-dark); color: var(--on-dark); height: 36px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-family: var(--font-mono); letter-spacing: 0.5px; border-bottom: 1px solid var(--hairline-dark);">
     <span>THALASSA DIGITAL TWIN PROTOTYPE — ACTIVE MONSOON KERALA GRID</span>
   </div>
 
@@ -21,10 +25,19 @@
     <div class="container nav-bar">
       <a href="#" class="nav-logo">THALASSA</a>
       
-      <!-- Primary Toggle between Modes -->
-      <div class="view-switch">
-        <button id="mode-fisherman" class="switch-btn active">Fisherman Dashboard</button>
-        <button id="mode-conservationist" class="switch-btn">Conservation Dashboard</button>
+      <!-- Primary Switchers Group -->
+      <div class="header-switches" style="display: flex; gap: var(--space-md); align-items: center;">
+        <!-- Switcher 1: Time Mode -->
+        <div class="view-switch" id="time-mode-switch">
+          <button id="time-mode-realtime" class="switch-btn active">Real-Time</button>
+          <button id="time-mode-simulation" class="switch-btn">Simulation</button>
+        </div>
+        
+        <!-- Switcher 2: View Perspective -->
+        <div class="view-switch" id="perspective-mode-switch">
+          <button id="mode-fisherman" class="switch-btn active">Fisherman</button>
+          <button id="mode-conservationist" class="switch-btn">Conservationist</button>
+        </div>
       </div>
 
       <!-- Action Actions -->
@@ -35,8 +48,8 @@
     </div>
   </header>
   
-  <!-- Demo Scenario Presets & Tour Bar (Cohere Aesthetic) -->
-  <div class="presets-bar-wrapper">
+  <!-- Demo Scenario Presets & Tour Bar (Claude Aesthetic) -->
+  <div class="presets-bar-wrapper" id="presets-bar">
     <div class="container presets-bar">
       <div class="presets-left">
         <span class="mono-label" style="font-size: 10px; color: var(--ink); font-weight: 700;">Scenario Presets</span>
@@ -44,6 +57,7 @@
           <button id="preset-monsoon" class="preset-btn">Scenario: Monsoon Upwelling (July)</button>
           <button id="preset-winter" class="preset-btn">Scenario: Spawning Peak (December)</button>
           <button id="preset-live" class="preset-btn">Scenario: Live Satellite Sync</button>
+          <button id="preset-heatwave" class="preset-btn" style="color: var(--error); border-color: var(--error);">Scenario: Heatwave & Hypoxia Shock</button>
         </div>
       </div>
       <div class="presets-right">
@@ -64,27 +78,40 @@
           <!-- Left: Overlay layer checkboxes -->
           <div class="hud-group">
             <div class="hud-panel">
-              <span class="mono-label" style="color: var(--ink);">Overlays</span>
-              <div class="layer-badge-list">
-                <button id="layer-sst" class="layer-badge active">SST</button>
-                <button id="layer-chl" class="layer-badge active">Chlorophyll</button>
-                <button id="layer-currents" class="layer-badge">Currents</button>
-                <button id="layer-mpa" class="layer-badge active">Conservation Zones</button>
+              <div class="hud-control-item">
+                <span class="mono-label">Overlays</span>
+                <div class="layer-badge-list" style="margin-top: 4px;">
+                  <button id="layer-sst" class="layer-badge active">SST</button>
+                  <button id="layer-chl" class="layer-badge active">Chlorophyll</button>
+                  <button id="layer-currents" class="layer-badge">Currents</button>
+                  <button id="layer-mpa" class="layer-badge active">Conservation Zones</button>
+                </div>
               </div>
             </div>
           </div>
           
-          <!-- Right: Selected Port Selector -->
+          <!-- Right: Selected Port & Species Parameter Selectors -->
           <div class="hud-group">
             <div class="hud-panel">
-              <span class="mono-label" style="color: var(--ink);">Anchor Port</span>
-              <select id="port-selector" style="font-family: var(--font-body); font-size: 12px; padding: 4px 8px; border: 1px solid var(--hairline); border-radius: var(--radius-xs); background: white; outline: none; cursor: pointer;">
-                <option value="vizhinjam">Vizhinjam (Thiruvananthapuram)</option>
-                <option value="neendakara">Neendakara (Kollam)</option>
-                <option value="munambam" selected>Munambam (Ernakulam)</option>
-                <option value="beypore">Beypore (Kozhikode)</option>
-                <option value="azheekkal">Azheekkal (Kannur)</option>
-              </select>
+              <div class="hud-control-item">
+                <span class="mono-label">Target Species</span>
+                <select id="species-selector">
+                  <option value="sardine" selected>Indian Oil Sardine</option>
+                  <option value="mackerel">Indian Mackerel</option>
+                  <option value="shrimp">Penaeid Shrimp</option>
+                  <option value="tuna">Yellowfin Tuna</option>
+                </select>
+              </div>
+              <div class="hud-control-item">
+                <span class="mono-label">Anchor Port</span>
+                <select id="port-selector">
+                  <option value="vizhinjam">Vizhinjam (Thiruvananthapuram)</option>
+                  <option value="neendakara">Neendakara (Kollam)</option>
+                  <option value="munambam" selected>Munambam (Ernakulam)</option>
+                  <option value="beypore">Beypore (Kozhikode)</option>
+                  <option value="azheekkal">Azheekkal (Kannur)</option>
+                </select>
+              </div>
             </div>
           </div>
         </div>
@@ -102,7 +129,7 @@
         </div>
 
         <!-- Timeline / Slider Panel -->
-        <div class="timeline-panel">
+        <div class="timeline-panel" id="timeline-panel">
           <div class="timeline-controls">
             <button id="btn-play-pause" class="play-btn">
               <!-- Play Icon SVG -->
@@ -150,36 +177,49 @@
             
             <div style="margin: var(--space-sm) 0; height: 1px; background-color: var(--hairline);"></div>
             
-            <div class="metric-row">
-              <div class="metric-box">
-                <span class="mono-label info-tooltip-trigger" style="font-size: 9px;" data-tooltip="Sea Surface Temperature. Optimal range for pelagic fish is 26.5°C to 29.5°C. Deviations disperse fish.">SST (°C) ⓘ</span>
-                <div class="metric-num" id="telemetry-sst">--</div>
-              </div>
-              <div class="metric-box">
-                <span class="mono-label info-tooltip-trigger" style="font-size: 9px;" data-tooltip="Proxy for food source (plankton). Optimal: 1.0 - 4.5 mg/m³. Values >4.5 signal toxic algal bloom hypoxia.">Chlorophyll ⓘ</span>
-                <div class="metric-num" id="telemetry-chl" style="color: var(--primary-color);">--</div>
-              </div>
+            <!-- Tabs for Telemetry -->
+            <div class="telemetry-tabs" style="display: flex; gap: 8px; margin-bottom: var(--space-sm);">
+              <button class="preset-btn active" id="tab-basic" onclick="document.getElementById('pane-basic').style.display='block'; document.getElementById('pane-adv').style.display='none'; this.classList.add('active'); document.getElementById('tab-adv').classList.remove('active');">Yield</button>
+              <button class="preset-btn" id="tab-adv" onclick="document.getElementById('pane-adv').style.display='block'; document.getElementById('pane-basic').style.display='none'; this.classList.add('active'); document.getElementById('tab-basic').classList.remove('active');">Environment</button>
             </div>
 
-            <div class="metric-row">
-              <div class="metric-box">
-                <span class="mono-label info-tooltip-trigger" style="font-size: 9px;" data-tooltip="Water flow velocity. Fish avoid currents >1.0 m/s, preferring mild drifts.">Current Vector ⓘ</span>
-                <div class="metric-num" id="telemetry-currents" style="font-size: 15px; color: var(--action-blue); font-weight: 600;">--</div>
+            <!-- Basic Pane -->
+            <div id="pane-basic">
+              <div class="metric-row">
+                <div class="metric-box">
+                  <span class="mono-label info-tooltip-trigger" style="font-size: 9px;" data-tooltip="Sea Surface Temperature. Optimal range for pelagic fish is 26.5°C to 29.5°C. Deviations disperse fish.">SST (°C) ⓘ</span>
+                  <div class="metric-num" id="telemetry-sst">--</div>
+                </div>
+                <div class="metric-box">
+                  <span class="mono-label info-tooltip-trigger" style="font-size: 9px;" data-tooltip="Proxy for food source (plankton). Optimal: 1.0 - 4.5 mg/m³. Values >4.5 signal toxic algal bloom hypoxia.">Chlorophyll ⓘ</span>
+                  <div class="metric-num" id="telemetry-chl" style="color: var(--on-primary);">--</div>
+                </div>
               </div>
-              <div class="metric-box">
-                <span class="mono-label info-tooltip-trigger" style="font-size: 9px;" data-tooltip="Distance to coastline. Kerala continental shelf holds 90% of catch within 100km.">Dist to Coast ⓘ</span>
-                <div class="metric-num" id="telemetry-coast" style="font-size: 16px; color: var(--slate); font-weight: 600;">--</div>
+              <div class="metric-row">
+                <div class="metric-box">
+                  <span class="mono-label info-tooltip-trigger" style="font-size: 9px;" data-tooltip="Distance to coastline. Kerala continental shelf holds 90% of catch within 100km.">Dist to Coast ⓘ</span>
+                  <div class="metric-num" id="telemetry-coast" style="font-size: 16px; color: var(--slate); font-weight: 600;">--</div>
+                </div>
               </div>
             </div>
-
-            <div class="metric-row">
-              <div class="metric-box">
-                <span class="mono-label info-tooltip-trigger" style="font-size: 9px;" data-tooltip="Local wind speed/dir. High winds (>25 km/h) create rough surface states unsafe for small vessels.">Wind Forecast ⓘ</span>
-                <div class="metric-num" id="telemetry-wind" style="font-size: 13px; color: var(--form-focus); font-weight: 600;">--</div>
+            
+            <!-- Advanced Pane -->
+            <div id="pane-adv" style="display: none;">
+              <div class="metric-row">
+                <div class="metric-box">
+                  <span class="mono-label info-tooltip-trigger" style="font-size: 9px;" data-tooltip="Water flow velocity. Fish avoid currents >1.0 m/s, preferring mild drifts.">Current Vector ⓘ</span>
+                  <div class="metric-num" id="telemetry-currents" style="font-size: 15px; color: var(--action-blue); font-weight: 600;">--</div>
+                </div>
               </div>
-              <div class="metric-box">
-                <span class="mono-label info-tooltip-trigger" style="font-size: 9px;" data-tooltip="Significant wave height and period. Waves >2.0m trigger harbor warning alerts.">Wave State ⓘ</span>
-                <div class="metric-num" id="telemetry-wave" style="font-size: 13px; color: var(--coral); font-weight: 600;">--</div>
+              <div class="metric-row">
+                <div class="metric-box">
+                  <span class="mono-label info-tooltip-trigger" style="font-size: 9px;" data-tooltip="Local wind speed/dir. High winds (>25 km/h) create rough surface states unsafe for small vessels.">Wind Forecast ⓘ</span>
+                  <div class="metric-num" id="telemetry-wind" style="font-size: 13px; color: var(--slate); font-weight: 600;">--</div>
+                </div>
+                <div class="metric-box">
+                  <span class="mono-label info-tooltip-trigger" style="font-size: 9px;" data-tooltip="Significant wave height and period. Waves >2.0m trigger harbor warning alerts.">Wave State ⓘ</span>
+                  <div class="metric-num" id="telemetry-wave" style="font-size: 13px; color: var(--coral); font-weight: 600;">--</div>
+                </div>
               </div>
             </div>
 
@@ -240,6 +280,18 @@
                   <span class="caption">Time:</span>
                   <strong id="route-std-time">-- hrs</strong>
                 </div>
+                <div class="comparison-metric">
+                  <span class="caption">Fuel Cost:</span>
+                  <strong id="route-std-fuel">-- INR</strong>
+                </div>
+                <div class="comparison-metric">
+                  <span class="caption">Catch Val:</span>
+                  <strong id="route-std-catch">-- INR</strong>
+                </div>
+                <div class="comparison-metric">
+                  <span class="caption">Net Profit:</span>
+                  <strong id="route-std-profit">-- INR</strong>
+                </div>
                 <div class="comparison-status status-error" id="route-std-status">
                   ❌ Cuts Spawning Ban
                 </div>
@@ -255,6 +307,18 @@
                 <div class="comparison-metric">
                   <span class="caption">Time:</span>
                   <strong id="route-opt-time" style="color: var(--primary-color);">-- hrs</strong>
+                </div>
+                <div class="comparison-metric">
+                  <span class="caption">Fuel Cost:</span>
+                  <strong id="route-opt-fuel">-- INR</strong>
+                </div>
+                <div class="comparison-metric">
+                  <span class="caption">Catch Val:</span>
+                  <strong id="route-opt-catch">-- INR</strong>
+                </div>
+                <div class="comparison-metric">
+                  <span class="caption">Net Profit:</span>
+                  <strong id="route-opt-profit" style="color: var(--action-blue);">-- INR</strong>
                 </div>
                 <div class="comparison-status status-success">
                   ✅ Eco-Compliant

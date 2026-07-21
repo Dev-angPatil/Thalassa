@@ -4,7 +4,7 @@
  */
 
 import { KERALA_COASTLINE, FISHING_HARBORS, CONSERVATION_ZONES } from './data/kerala_spatial.js';
-import { generateDigitalTwinGrid, calculateOptimizedRoute } from './lib/data_engine.js';
+import { generateDigitalTwinGrid, calculateOptimizedRoute, getDistanceKM } from './lib/data_engine.js';
 import { fetchIncoisErddapData, fetchOpenMeteoForecast } from './lib/api_client.js';
 
 // Open-Meteo Cache & Debounce Globals
@@ -13,6 +13,8 @@ let mouseMoveDebounceTimer = null;
 
 // Global state
 let currentMode = 'fisherman'; // 'fisherman' or 'conservationist'
+let currentTimeMode = 'realtime'; // 'realtime' or 'simulation'
+let lastSimulationDay = 175;
 let selectedPort = 'munambam';
 let dayOfYear = 175; // Defaults to late June (Monsoon season)
 let liveData = null;
@@ -53,6 +55,7 @@ let gridLinesLayerGroup = null;
 let hoverOutline = null;
 let selectedOutline = null;
 let routePolyline = null;
+let stdRoutePolyline = null;
 let vesselMarker = null;
 
 // Guided Tour state
@@ -92,8 +95,8 @@ const tourSteps = [
   }
 ];
 
-// 2D Array to store 432 cell layer references
-const cellLayers = Array(24).fill(null).map(() => Array(18).fill(null));
+// 2D Array to store 1200 cell layer references
+const cellLayers = Array(40).fill(null).map(() => Array(30).fill(null));
 
 // Initialize Application
 function init() {
@@ -104,6 +107,8 @@ function init() {
   }).setView([10.4, 76.0], 8);
 
   L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; OpenStreetMap contributors, &copy; CARTO',
+    subdomains: 'abcd',
     maxZoom: 18,
     minZoom: 6
   }).addTo(map);
@@ -130,16 +135,17 @@ function init() {
 
   // Set up hover highlight layer
   hoverOutline = L.rectangle([[0, 0], [0, 0]], {
-    color: 'rgba(24, 99, 220, 0.6)',
-    weight: 1.5,
-    fillColor: 'rgba(24, 99, 220, 0.05)',
-    fillOpacity: 0.1,
+    color: 'var(--primary-color)',
+    weight: 2.5,
+    fillColor: 'var(--primary-color)',
+    fillOpacity: 0.15,
+    className: 'hover-outline-smooth',
     interactive: false
   });
 
   // Set up selection highlight layer
   selectedOutline = L.rectangle([[0, 0], [0, 0]], {
-    color: 'var(--primary-color)',
+    color: 'var(--ink)',
     weight: 2.5,
     fillColor: 'rgba(0, 0, 0, 0)',
     fillOpacity: 0,
@@ -148,10 +154,17 @@ function init() {
 
   // Set up vessel route path layer
   routePolyline = L.polyline([], {
-    color: 'var(--action-blue)',
+    color: '#141413',
     weight: 3.5,
     lineCap: 'round',
     lineJoin: 'round',
+    interactive: false
+  });
+  
+  stdRoutePolyline = L.polyline([], {
+    color: 'var(--error, #c64545)',
+    weight: 2.5,
+    dashArray: '8, 8',
     interactive: false
   });
 
@@ -160,19 +173,19 @@ function init() {
     radius: 4.5,
     color: 'white',
     weight: 1.5,
-    fillColor: 'var(--action-blue)',
+    fillColor: '#141413',
     fillOpacity: 1,
     interactive: false
   });
 
-  // Create grid cell rectangles (24x18 = 432 cells)
-  const latStep = (LAT_MAX - LAT_MIN) / 24;
-  const lngStep = (LNG_MAX - LNG_MIN) / 18;
+  // Create grid cell rectangles (40x30 = 1200 cells)
+  const latStep = (LAT_MAX - LAT_MIN) / 40;
+  const lngStep = (LNG_MAX - LNG_MIN) / 30;
   const canvasRenderer = L.canvas(); // High-performance canvas vector renderer
 
-  for (let r = 0; r < 24; r++) {
+  for (let r = 0; r < 40; r++) {
     const lat = LAT_MAX - (r * latStep) - (latStep / 2);
-    for (let c = 0; c < 18; c++) {
+    for (let c = 0; c < 30; c++) {
       const lng = LNG_MIN + (c * lngStep) + (lngStep / 2);
       
       const bounds = [
@@ -228,8 +241,14 @@ function init() {
   window.gridData = gridData;
   window.selectedCell = selectedCell;
   window.liveData = liveData;
+  window.calculateOptimizedRoute = calculateOptimizedRoute;
+  window.FISHING_HARBORS = FISHING_HARBORS;
 
   showToast("Thalassa workspace initialized. Native Leaflet layers active.");
+
+  // Initialize default time mode to Real-Time
+  currentTimeMode = 'simulation';
+  switchTimeMode('realtime');
   
   // Start the animation frame loop
   requestAnimationFrame(tick);
@@ -341,17 +360,33 @@ function updateGrid() {
       optimizedRoute = calculateOptimizedRoute(selectedPort, selectedCell, gridData, dayOfYear);
       updateTelemetryCard(selectedCell);
 
-      const pathCoords = optimizedRoute.path.map(pt => [pt.lat, pt.lng]);
-      routePolyline.setLatLngs(pathCoords);
-      if (!map.hasLayer(routePolyline)) {
-        routePolyline.addTo(map);
-      }
-      if (!map.hasLayer(vesselMarker)) {
-        vesselMarker.addTo(map);
+      if (!optimizedRoute || !optimizedRoute.path) {
+        if (map.hasLayer(routePolyline)) map.removeLayer(routePolyline);
+        if (map.hasLayer(stdRoutePolyline)) map.removeLayer(stdRoutePolyline);
+        if (map.hasLayer(stdRoutePolyline)) map.removeLayer(stdRoutePolyline);
+        if (map.hasLayer(vesselMarker)) map.removeLayer(vesselMarker);
+      } else {
+        const pathCoords = optimizedRoute.path.map(pt => [pt.lat, pt.lng]);
+        routePolyline.setLatLngs(pathCoords);
+        if (!map.hasLayer(routePolyline)) {
+          routePolyline.addTo(map);
+        }
+        
+        const stdPathCoords = (optimizedRoute.stdPath || []).map(pt => [pt.lat, pt.lng]);
+        stdRoutePolyline.setLatLngs(stdPathCoords);
+        if (!map.hasLayer(stdRoutePolyline)) {
+          stdRoutePolyline.addTo(map);
+        }
+
+        if (!map.hasLayer(vesselMarker)) {
+          vesselMarker.addTo(map);
+        }
       }
     }
   } else {
     if (map.hasLayer(routePolyline)) map.removeLayer(routePolyline);
+        if (map.hasLayer(stdRoutePolyline)) map.removeLayer(stdRoutePolyline);
+    if (map.hasLayer(stdRoutePolyline)) map.removeLayer(stdRoutePolyline);
     if (map.hasLayer(vesselMarker)) map.removeLayer(vesselMarker);
   }
 
@@ -383,29 +418,29 @@ function updateMapLayers() {
     if (currentMode === 'fisherman') {
       if (activeOverlays.sst && !activeOverlays.chl) {
         const alpha = Math.max(0.1, (cell.sst - 25) / 6.0);
-        fillColor = 'rgb(239, 108, 0)';
-        fillOpacity = alpha * 0.35;
+        fillColor = '#4a4a46';
+        fillOpacity = alpha * 0.45;
       } else if (activeOverlays.chl && !activeOverlays.sst) {
         const alpha = Math.min(1.0, Math.max(0.1, cell.chlorophyll / 5.0));
-        fillColor = 'rgb(46, 125, 50)';
-        fillOpacity = alpha * 0.35;
+        fillColor = '#6c6c64';
+        fillOpacity = alpha * 0.45;
       } else if (activeOverlays.sst && activeOverlays.chl) {
         const alpha = Math.max(0.1, cell.fishingScore / 100);
-        fillColor = 'rgb(24, 99, 220)';
-        fillOpacity = alpha * 0.35;
+        fillColor = '#141413';
+        fillOpacity = alpha * 0.65;
       }
     } else {
       if (activeOverlays.mpa && cell.conservationScore > 30) {
-        const alpha = Math.max(0.15, cell.conservationScore / 100);
-        fillColor = cell.isRestrictedZone ? 'rgb(179, 0, 0)' : 'rgb(255, 119, 89)';
-        fillOpacity = cell.isRestrictedZone ? alpha * 0.45 : alpha * 0.35;
+        const alpha = Math.max(0.2, cell.conservationScore / 100);
+        fillColor = cell.isRestrictedZone ? '#ff7759' : '#ffad9b';
+        fillOpacity = cell.isRestrictedZone ? alpha * 0.6 : alpha * 0.35;
       }
     }
 
     rect.setStyle({
       fillColor: fillColor,
       fillOpacity: fillOpacity,
-      color: fillColor !== 'rgba(0,0,0,0)' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0,0,0,0)',
+      color: fillColor !== 'rgba(0,0,0,0)' ? 'rgba(0, 0, 0, 0.05)' : 'rgba(0,0,0,0)',
       weight: fillColor !== 'rgba(0,0,0,0)' ? 0.5 : 0
     });
   });
@@ -416,14 +451,14 @@ function updateMapLayers() {
     CONSERVATION_ZONES.forEach(zone => {
       const latLngs = zone.polygon.map(pt => [pt.lat, pt.lng]);
       const isActiveBan = zone.restrictedMonths.includes(currentMonth);
-      const color = zone.severityLevel === 'high' ? 'rgb(179, 0, 0)' : 'rgb(255, 119, 89)';
+      const color = zone.severityLevel === 'high' ? '#ff5436' : '#ff866a';
       
       const poly = L.polygon(latLngs, {
         color: color,
         weight: 1.5,
         dashArray: '4, 4',
         fillColor: color,
-        fillOpacity: isActiveBan ? 0.15 : 0.05,
+        fillOpacity: isActiveBan ? 0.25 : 0.08,
         interactive: true
       });
       
@@ -436,11 +471,11 @@ function updateMapLayers() {
   portsLayerGroup.clearLayers();
   FISHING_HARBORS.forEach(port => {
     const isSelected = port.id === selectedPort;
-    const color = isSelected ? 'var(--action-blue)' : 'var(--deep-green)';
+    const color = isSelected ? 'var(--primary-color)' : 'var(--ink)';
     
     const marker = L.circleMarker([port.lat, port.lng], {
       radius: isSelected ? 8 : 5,
-      color: 'var(--canvas)',
+      color: '#ffffff',
       weight: 1.5,
       fillColor: color,
       fillOpacity: 1,
@@ -455,7 +490,16 @@ function updateMapLayers() {
       selectedPort = port.id;
       if (selectedCell) {
         optimizedRoute = calculateOptimizedRoute(selectedPort, selectedCell, gridData, dayOfYear);
-        updateRouteTelemetry();
+        if (!optimizedRoute || !optimizedRoute.path) {
+          showToast("No route found.", "red");
+          document.getElementById('route-section').style.display = 'none';
+          if (map.hasLayer(routePolyline)) map.removeLayer(routePolyline);
+        if (map.hasLayer(stdRoutePolyline)) map.removeLayer(stdRoutePolyline);
+          if (map.hasLayer(stdRoutePolyline)) map.removeLayer(stdRoutePolyline);
+          if (map.hasLayer(vesselMarker)) map.removeLayer(vesselMarker);
+        } else {
+          updateRouteTelemetry();
+        }
       }
       updateGrid();
     });
@@ -505,6 +549,14 @@ function updateMapLayers() {
 
 // Setup Interaction Listeners
 function setupEventListeners() {
+  // Time mode switch
+  document.getElementById('time-mode-realtime').addEventListener('click', () => {
+    switchTimeMode('realtime');
+  });
+  document.getElementById('time-mode-simulation').addEventListener('click', () => {
+    switchTimeMode('simulation');
+  });
+
   // Mode toggles
   document.getElementById('mode-fisherman').addEventListener('click', () => {
     switchPerspective('fisherman');
@@ -525,9 +577,27 @@ function setupEventListeners() {
     selectedPort = e.target.value;
     if (selectedCell) {
       optimizedRoute = calculateOptimizedRoute(selectedPort, selectedCell, gridData, dayOfYear);
+      if (!optimizedRoute || !optimizedRoute.path) {
+        showToast("No route found.", "red");
+        document.getElementById('route-section').style.display = 'none';
+        if (map.hasLayer(routePolyline)) map.removeLayer(routePolyline);
+        if (map.hasLayer(stdRoutePolyline)) map.removeLayer(stdRoutePolyline);
+        if (map.hasLayer(vesselMarker)) map.removeLayer(vesselMarker);
+      } else {
+        updateRouteTelemetry();
+      }
     }
     updateGrid();
   });
+
+  const speciesSelect = document.getElementById('species-selector');
+  if (speciesSelect) {
+    speciesSelect.addEventListener('change', () => {
+      if (optimizedRoute) {
+        updateRouteTelemetry();
+      }
+    });
+  }
 
   // Timeline slider
   const slider = document.getElementById('timeline-slider');
@@ -552,6 +622,9 @@ function setupEventListeners() {
   });
   document.getElementById('preset-live').addEventListener('click', () => {
     applyPresetScenario('live');
+  });
+  document.getElementById('preset-heatwave').addEventListener('click', () => {
+    applyPresetScenario('heatwave');
   });
 
   // Guided Map Tour buttons
@@ -633,6 +706,39 @@ function applyPresetScenario(type) {
     map.setView([11.15, 75.8], 9);
     
     showToast("Scenario: December Winter Spawning. Olive Ridley nesting protection active.", "green");
+  } else if (type === 'heatwave') {
+    document.getElementById('preset-heatwave').classList.add('active');
+    dayOfYear = 140; // Mid May
+    document.getElementById('timeline-slider').value = dayOfYear;
+    updateTimelineLabel();
+    
+    // Switch to Conservation Dashboard
+    switchPerspective('conservationist');
+    
+    // Enable SST overlay to see heatwave
+    activeOverlays.sst = true;
+    activeOverlays.chl = false;
+    activeOverlays.currents = false;
+    activeOverlays.mpa = true;
+    
+    document.getElementById('layer-sst').classList.add('active');
+    document.getElementById('layer-chl').classList.remove('active');
+    document.getElementById('layer-currents').classList.remove('active');
+    document.getElementById('layer-mpa').classList.add('active');
+    
+    // Inject heatwave anomalies into grid
+    gridData.forEach(cell => {
+      if (!cell.isLand) {
+        cell.sst = 31.5 + Math.random() * 1.5; // Extreme heat
+        cell.chlorophyll = 0.1; // Hypoxia / low productivity
+        cell.conservationScore = Math.min(100, cell.conservationScore + 40); // Stress
+        cell.fishingScore = Math.max(0, cell.fishingScore - 60);
+      }
+    });
+
+    map.setView([9.5, 76.2], 8);
+    updateMapLayers();
+    showToast("Scenario: Heatwave & Hypoxia Shock applied. Marine life under severe stress.", "orange");
   } else if (type === 'live') {
     document.getElementById('preset-live').classList.add('active');
     triggerLiveApiFetch();
@@ -802,27 +908,29 @@ function setupLayerToggle(elementId, key) {
   });
 }
 
-// Map Hover interaction
+// // Global variables for mouse tracking
 let lastHoveredCell = null;
+
+// Handle map hover for telemetry updates
 function handleMapMouseMove(e) {
   const lat = e.latlng.lat;
   const lng = e.latlng.lng;
-  
+
   const cell = gridData.find(cell => {
-    const latStep = (LAT_MAX - LAT_MIN) / 24;
-    const lngStep = (LNG_MAX - LNG_MIN) / 18;
+    const latStep = (LAT_MAX - LAT_MIN) / 40;
+    const lngStep = (LNG_MAX - LNG_MIN) / 30;
     return Math.abs(cell.lat - lat) <= (latStep / 2) && Math.abs(cell.lng - lng) <= (lngStep / 2);
   });
-  
+
   if (cell !== lastHoveredCell) {
     lastHoveredCell = cell;
     hoveredCell = cell;
     if (cell) {
       updateTelemetryCard(cell);
-      
+
       // Update hover outline rectangle bounds
-      const latStep = (LAT_MAX - LAT_MIN) / 24;
-      const lngStep = (LNG_MAX - LNG_MIN) / 18;
+      const latStep = (LAT_MAX - LAT_MIN) / 40;
+      const lngStep = (LNG_MAX - LNG_MIN) / 30;
       const bounds = [
         [cell.lat - latStep/2, cell.lng - lngStep/2],
         [cell.lat + latStep/2, cell.lng + lngStep/2]
@@ -831,17 +939,11 @@ function handleMapMouseMove(e) {
       if (!map.hasLayer(hoverOutline)) {
         hoverOutline.addTo(map);
       }
-      
-      if (mouseMoveDebounceTimer) {
-        clearTimeout(mouseMoveDebounceTimer);
-      }
-      
+
       if (!cell.isLand) {
         const cacheKey = `${cell.lat.toFixed(1)}_${cell.lng.toFixed(1)}`;
         if (!openMeteoCache.has(cacheKey)) {
-          mouseMoveDebounceTimer = setTimeout(() => {
-            fetchAndCacheForecast(cell.lat, cell.lng, cacheKey);
-          }, 350);
+          fetchAndCacheForecast(cell.lat, cell.lng, cacheKey);
         }
       }
     } else {
@@ -850,7 +952,7 @@ function handleMapMouseMove(e) {
       }
     }
   }
-}
+};
 
 // Map Selection interaction
 function handleMapClick(e) {
@@ -858,8 +960,8 @@ function handleMapClick(e) {
   const lng = e.latlng.lng;
   
   const cell = gridData.find(cell => {
-    const latStep = (LAT_MAX - LAT_MIN) / 24;
-    const lngStep = (LNG_MAX - LNG_MIN) / 18;
+    const latStep = (LAT_MAX - LAT_MIN) / 40;
+    const lngStep = (LNG_MAX - LNG_MIN) / 30;
     return Math.abs(cell.lat - lat) <= (latStep / 2) && Math.abs(cell.lng - lng) <= (lngStep / 2);
   });
 
@@ -870,30 +972,45 @@ function handleMapClick(e) {
     optimizedRoute = calculateOptimizedRoute(selectedPort, selectedCell, gridData, dayOfYear);
     vesselProgress = 0; // Reset transit animation
     
-    document.getElementById('route-section').style.display = 'block';
-    updateRouteTelemetry();
-    
-    // Update selected outline bounds
-    const latStep = (LAT_MAX - LAT_MIN) / 24;
-    const lngStep = (LNG_MAX - LNG_MIN) / 18;
-    const bounds = [
-      [cell.lat - latStep/2, cell.lng - lngStep/2],
-      [cell.lat + latStep/2, cell.lng + lngStep/2]
-    ];
-    selectedOutline.setBounds(bounds);
-    if (!map.hasLayer(selectedOutline)) {
-      selectedOutline.addTo(map);
-    }
+    if (!optimizedRoute || !optimizedRoute.path) {
+      showToast("No route found to this location.", "red");
+      document.getElementById('route-section').style.display = 'none';
+      if (map.hasLayer(routePolyline)) map.removeLayer(routePolyline);
+        if (map.hasLayer(stdRoutePolyline)) map.removeLayer(stdRoutePolyline);
+      if (map.hasLayer(stdRoutePolyline)) map.removeLayer(stdRoutePolyline);
+      if (map.hasLayer(vesselMarker)) map.removeLayer(vesselMarker);
+    } else {
+      document.getElementById('route-section').style.display = 'block';
+      updateRouteTelemetry();
+      
+      // Update selected outline bounds
+      const latStep = (LAT_MAX - LAT_MIN) / 40;
+      const lngStep = (LNG_MAX - LNG_MIN) / 30;
+      const bounds = [
+        [cell.lat - latStep/2, cell.lng - lngStep/2],
+        [cell.lat + latStep/2, cell.lng + lngStep/2]
+      ];
+      selectedOutline.setBounds(bounds);
+      if (!map.hasLayer(selectedOutline)) {
+        selectedOutline.addTo(map);
+      }
 
-    // Set route coordinates
-    const pathCoords = optimizedRoute.path.map(pt => [pt.lat, pt.lng]);
-    routePolyline.setLatLngs(pathCoords);
-    if (!map.hasLayer(routePolyline)) {
-      routePolyline.addTo(map);
-    }
-    
-    if (!map.hasLayer(vesselMarker)) {
-      vesselMarker.addTo(map);
+      // Set route coordinates
+      const pathCoords = optimizedRoute.path.map(pt => [pt.lat, pt.lng]);
+      routePolyline.setLatLngs(pathCoords);
+      if (!map.hasLayer(routePolyline)) {
+        routePolyline.addTo(map);
+      }
+      
+      const stdPathCoords = (optimizedRoute.stdPath || []).map(pt => [pt.lat, pt.lng]);
+      stdRoutePolyline.setLatLngs(stdPathCoords);
+      if (!map.hasLayer(stdRoutePolyline)) {
+        stdRoutePolyline.addTo(map);
+      }
+      
+      if (!map.hasLayer(vesselMarker)) {
+        vesselMarker.addTo(map);
+      }
     }
 
     updateGrid();
@@ -948,7 +1065,16 @@ async function triggerLiveApiFetch() {
     // Update route calculation if a target cell is locked
     if (selectedCell) {
       optimizedRoute = calculateOptimizedRoute(selectedPort, selectedCell, gridData, dayOfYear);
-      updateRouteTelemetry();
+      if (!optimizedRoute || !optimizedRoute.path) {
+        showToast("No route found.", "red");
+        document.getElementById('route-section').style.display = 'none';
+        if (map.hasLayer(routePolyline)) map.removeLayer(routePolyline);
+        if (map.hasLayer(stdRoutePolyline)) map.removeLayer(stdRoutePolyline);
+        if (map.hasLayer(vesselMarker)) map.removeLayer(vesselMarker);
+      } else {
+        document.getElementById('route-section').style.display = 'block';
+        updateRouteTelemetry();
+      }
     }
   } catch (err) {
     showToast("API synchronization error. Loaded offline simulator.", 'red');
@@ -995,11 +1121,69 @@ function switchPerspective(mode) {
 
   if (map.hasLayer(selectedOutline)) map.removeLayer(selectedOutline);
   if (map.hasLayer(routePolyline)) map.removeLayer(routePolyline);
+        if (map.hasLayer(stdRoutePolyline)) map.removeLayer(stdRoutePolyline);
   if (map.hasLayer(vesselMarker)) map.removeLayer(vesselMarker);
 
   updateGrid();
   updateMapLegend();
   showToast(`Switched perspective: ${mode.toUpperCase()} mode.`);
+}
+
+// Handle switching Real-Time vs Simulation modes
+function switchTimeMode(mode) {
+  if (currentTimeMode === mode) return;
+  currentTimeMode = mode;
+  
+  const rtBtn = document.getElementById('time-mode-realtime');
+  const simBtn = document.getElementById('time-mode-simulation');
+  const presetsBar = document.getElementById('presets-bar');
+  const timelinePanel = document.getElementById('timeline-panel');
+  const slider = document.getElementById('timeline-slider');
+  
+  if (!rtBtn || !simBtn || !presetsBar || !timelinePanel) return;
+  
+  if (mode === 'realtime') {
+    rtBtn.classList.add('active');
+    simBtn.classList.remove('active');
+    
+    // Hide presets & timeline
+    presetsBar.style.display = 'none';
+    timelinePanel.style.display = 'none';
+    
+    // Save last simulation day
+    lastSimulationDay = parseInt(slider.value) || 175;
+    
+    // Compute current real day of year (July 20)
+    const now = new Date();
+    const start = new Date(now.getFullYear(), 0, 0);
+    const diff = now - start;
+    const oneDay = 1000 * 60 * 60 * 24;
+    dayOfYear = Math.floor(diff / oneDay);
+    
+    // Stop play animation if active
+    if (isPlaying) {
+      togglePlay();
+    }
+    
+    showToast("Real-time live feed active.");
+  } else {
+    simBtn.classList.add('active');
+    rtBtn.classList.remove('active');
+    
+    // Show presets & timeline
+    presetsBar.style.display = 'block';
+    timelinePanel.style.display = 'flex';
+    
+    // Restore last simulation day
+    dayOfYear = lastSimulationDay;
+    slider.value = dayOfYear;
+    updateTimelineLabel();
+    
+    showToast("Simulation mode active.");
+  }
+  
+  updateGrid();
+  updateMapLegend();
 }
 
 // Update telemetry details panel
@@ -1146,6 +1330,52 @@ function drawMiniTrendChart(cell) {
   }
 }
 
+function calculatePathFuelCost(path, gridData, fuelRatePerKm) {
+  if (!path || path.length <= 1) return 0;
+  let totalCost = 0;
+  for (let i = 0; i < path.length - 1; i++) {
+    const p1 = path[i];
+    const p2 = path[i + 1];
+    const segmentDist = getDistanceKM(p1.lat, p1.lng, p2.lat, p2.lng);
+    
+    // Find nearest cell to p1
+    let nearest = null;
+    let minD = Infinity;
+    for (const cell of gridData) {
+      const d = getDistanceKM(p1.lat, p1.lng, cell.lat, cell.lng);
+      if (d < minD) {
+        minD = d;
+        nearest = cell;
+      }
+    }
+    
+    let currentSpeed = 0.2;
+    let currentDir = 180;
+    if (nearest) {
+      currentSpeed = nearest.currentSpeed !== undefined ? nearest.currentSpeed : 0.2;
+      currentDir = nearest.currentDir !== undefined ? nearest.currentDir : 180;
+    }
+    
+    const dLat = p2.lat - p1.lat;
+    const dLng = p2.lng - p1.lng;
+    const len = Math.hypot(dLat, dLng);
+    
+    let resistanceFactor = 1.0;
+    if (len > 0 && currentSpeed > 0) {
+      const vesselVector = { y: dLat / len, x: dLng / len };
+      const currentRad = (currentDir * Math.PI) / 180;
+      const currentVector = { y: Math.cos(currentRad) * currentSpeed, x: Math.sin(currentRad) * currentSpeed };
+      
+      const dot = vesselVector.x * currentVector.x + vesselVector.y * currentVector.y;
+      // Head-current (dot < 0) increases fuel burn, tail-current (dot > 0) reduces it
+      resistanceFactor = Math.max(0.7, Math.min(1.5, 1.0 - dot * 0.25));
+    }
+    
+    totalCost += segmentDist * fuelRatePerKm * resistanceFactor;
+  }
+  return Math.round(totalCost);
+}
+
 // Update route text details with Standard vs Deflected Comparison
 function updateRouteTelemetry() {
   if (!optimizedRoute) return;
@@ -1153,12 +1383,41 @@ function updateRouteTelemetry() {
   const activePort = FISHING_HARBORS.find(h => h.id === selectedPort);
   title.textContent = `${activePort.name.split(' ')[0]} to Target Grid`;
 
+  // Financial Calculators
+  const fuelRatePerKm = 80;
+  const speciesSelect = document.getElementById('species-selector');
+  const speciesVal = speciesSelect ? speciesSelect.value : 'sardine';
+  let speciesMultiplier = 50;
+  if (speciesVal === 'mackerel') speciesMultiplier = 80;
+  if (speciesVal === 'shrimp') speciesMultiplier = 250;
+  if (speciesVal === 'tuna') speciesMultiplier = 400;
+
+  // Base expected catch volume (kg) modified by grid yield score
+  const expectedCatchKg = (selectedCell.fishingScore / 100) * 800;
+
+  // Std Route Finance
+  const stdFuelCost = calculatePathFuelCost(optimizedRoute.stdPath, gridData, fuelRatePerKm);
+  const stdCatchVal = Math.round(expectedCatchKg * speciesMultiplier);
+  const stdFine = optimizedRoute.cutsSpawningBan ? 50000 : 0;
+  const stdNetProfit = stdCatchVal - stdFuelCost - stdFine;
+
+  // Opt Route Finance
+  const optFuelCost = calculatePathFuelCost(optimizedRoute.path, gridData, fuelRatePerKm);
+  const optCatchVal = Math.round(expectedCatchKg * speciesMultiplier);
+  const optNetProfit = optCatchVal - optFuelCost;
+
   // Standard Route (Non-Compliant) Metrics
   document.getElementById('route-std-distance').textContent = `${optimizedRoute.stdDistanceKM} km`;
   document.getElementById('route-std-time').textContent = `${optimizedRoute.stdTimeHours} hrs`;
+  document.getElementById('route-std-fuel').textContent = `${stdFuelCost.toLocaleString()} INR`;
+  document.getElementById('route-std-catch').textContent = `${stdCatchVal.toLocaleString()} INR`;
+  const stdProfitEl = document.getElementById('route-std-profit');
+  stdProfitEl.textContent = `${stdNetProfit.toLocaleString()} INR`;
+  stdProfitEl.style.color = stdNetProfit < 0 ? 'var(--error)' : 'var(--slate)';
+
   const stdStatus = document.getElementById('route-std-status');
   if (optimizedRoute.cutsSpawningBan) {
-    stdStatus.textContent = "❌ Cuts Spawning Ban";
+    stdStatus.textContent = "❌ Cuts Spawning Ban (Fine: 50,000 INR)";
     stdStatus.className = "comparison-status status-error";
   } else {
     stdStatus.textContent = "✅ Eco-Compliant";
@@ -1168,6 +1427,11 @@ function updateRouteTelemetry() {
   // Thalassa Route (Optimized Compliant) Metrics
   document.getElementById('route-opt-distance').textContent = `${optimizedRoute.distanceKM} km`;
   document.getElementById('route-opt-time').textContent = `${optimizedRoute.estTimeHours} hrs`;
+  document.getElementById('route-opt-fuel').textContent = `${optFuelCost.toLocaleString()} INR`;
+  document.getElementById('route-opt-catch').textContent = `${optCatchVal.toLocaleString()} INR`;
+  const optProfitEl = document.getElementById('route-opt-profit');
+  optProfitEl.textContent = `${optNetProfit.toLocaleString()} INR`;
+  optProfitEl.style.color = optNetProfit < 0 ? 'var(--error)' : 'var(--action-blue)';
 }
 
 // Populate the sidebar list items dynamically
@@ -1200,30 +1464,44 @@ function updateSidebarLists() {
         selectedCell = zone;
         optimizedRoute = calculateOptimizedRoute(selectedPort, selectedCell, gridData, dayOfYear);
         vesselProgress = 0;
-        document.getElementById('route-section').style.display = 'block';
-        updateRouteTelemetry();
-        updateTelemetryCard(zone);
         
-        // Update selected outline bounds
-        const latStep = (LAT_MAX - LAT_MIN) / 24;
-        const lngStep = (LNG_MAX - LNG_MIN) / 18;
-        const bounds = [
-          [zone.lat - latStep/2, zone.lng - lngStep/2],
-          [zone.lat + latStep/2, zone.lng + lngStep/2]
-        ];
-        selectedOutline.setBounds(bounds);
-        if (!map.hasLayer(selectedOutline)) {
-          selectedOutline.addTo(map);
-        }
+        if (!optimizedRoute || !optimizedRoute.path) {
+          showToast("No route found to this location.", "red");
+          document.getElementById('route-section').style.display = 'none';
+          if (map.hasLayer(routePolyline)) map.removeLayer(routePolyline);
+        if (map.hasLayer(stdRoutePolyline)) map.removeLayer(stdRoutePolyline);
+          if (map.hasLayer(vesselMarker)) map.removeLayer(vesselMarker);
+        } else {
+          document.getElementById('route-section').style.display = 'block';
+          updateRouteTelemetry();
+          updateTelemetryCard(zone);
+          
+          // Update selected outline bounds
+          const latStep = (LAT_MAX - LAT_MIN) / 40;
+          const lngStep = (LNG_MAX - LNG_MIN) / 30;
+          const bounds = [
+            [zone.lat - latStep/2, zone.lng - lngStep/2],
+            [zone.lat + latStep/2, zone.lng + lngStep/2]
+          ];
+          selectedOutline.setBounds(bounds);
+          if (!map.hasLayer(selectedOutline)) {
+            selectedOutline.addTo(map);
+          }
 
-        // Set route coordinates
-        const pathCoords = optimizedRoute.path.map(pt => [pt.lat, pt.lng]);
-        routePolyline.setLatLngs(pathCoords);
-        if (!map.hasLayer(routePolyline)) {
-          routePolyline.addTo(map);
-        }
-        if (!map.hasLayer(vesselMarker)) {
-          vesselMarker.addTo(map);
+          // Set route coordinates
+          const pathCoords = optimizedRoute.path.map(pt => [pt.lat, pt.lng]);
+          routePolyline.setLatLngs(pathCoords);
+          if (!map.hasLayer(routePolyline)) {
+            routePolyline.addTo(map);
+          }
+          const stdPathCoords = (optimizedRoute.stdPath || []).map(pt => [pt.lat, pt.lng]);
+          stdRoutePolyline.setLatLngs(stdPathCoords);
+          if (!map.hasLayer(stdRoutePolyline)) {
+            stdRoutePolyline.addTo(map);
+          }
+          if (!map.hasLayer(vesselMarker)) {
+            vesselMarker.addTo(map);
+          }
         }
 
         updateGrid();
@@ -1265,6 +1543,7 @@ function updateSidebarLists() {
         // Remove selection outlines and routes since it's a sanctuary inspection
         if (map.hasLayer(selectedOutline)) map.removeLayer(selectedOutline);
         if (map.hasLayer(routePolyline)) map.removeLayer(routePolyline);
+        if (map.hasLayer(stdRoutePolyline)) map.removeLayer(stdRoutePolyline);
         if (map.hasLayer(vesselMarker)) map.removeLayer(vesselMarker);
         
         showToast(`Inspecting ecosystem bounds of: ${zone.activeMPA ? zone.activeMPA.name : 'Sensitive Cell'}`);
@@ -1337,28 +1616,28 @@ function updateMapLegend() {
     title.textContent = 'YIELD ANALYSIS LEGEND';
 
     if (activeOverlays.sst && !activeOverlays.chl) {
-      addLegendItem('rgba(239, 108, 0, 0.35)', 'Sea Temp (Warm/High)');
-      addLegendItem('rgba(239, 108, 0, 0.1)', 'Sea Temp (Cool/Low)');
+      addLegendItem('rgba(74, 74, 70, 0.45)', 'Sea Temp (Warm/High)');
+      addLegendItem('rgba(74, 74, 70, 0.15)', 'Sea Temp (Cool/Low)');
     } else if (activeOverlays.chl && !activeOverlays.sst) {
-      addLegendItem('rgba(46, 125, 50, 0.35)', 'Chlorophyll (High Food)');
-      addLegendItem('rgba(46, 125, 50, 0.1)', 'Chlorophyll (Low Food)');
+      addLegendItem('rgba(108, 108, 100, 0.45)', 'Chlorophyll (High Food)');
+      addLegendItem('rgba(108, 108, 100, 0.15)', 'Chlorophyll (Low Food)');
     } else if (activeOverlays.sst && activeOverlays.chl) {
-      addLegendItem('rgba(24, 99, 220, 0.35)', 'Optimal Yield (High)');
-      addLegendItem('rgba(24, 99, 220, 0.1)', 'Optimal Yield (Low)');
+      addLegendItem('rgba(20, 20, 19, 0.65)', 'Optimal Yield (High)');
+      addLegendItem('rgba(20, 20, 19, 0.2)', 'Optimal Yield (Low)');
     } else {
       addLegendItem('rgba(0,0,0,0)', 'No Overlay Active (Map View)');
     }
 
     if (activeOverlays.currents) {
-      addLegendItem('rgba(24, 99, 220, 0.55)', 'Currents Vector Arrow', 'arrow');
+      addLegendItem('rgba(24, 99, 220, 0.45)', 'Currents Vector Arrow', 'arrow');
     }
-    addLegendItem('var(--action-blue)', 'Anchor Fishing Harbors', 'circle');
+    addLegendItem('var(--primary-color)', 'Anchor Fishing Harbors', 'circle');
   } else {
     title.textContent = 'CONSERVATION LEGEND';
-    addLegendItem('rgba(179, 0, 0, 0.45)', 'Active Spawning Ban');
-    addLegendItem('rgba(255, 119, 89, 0.35)', 'Marine Reserve Buffer');
-    addLegendItem('rgba(179, 0, 0, 0.6)', 'Seasonal Spawning Line', 'dotted-line');
-    addLegendItem('var(--deep-green)', 'Protected Harbors', 'circle');
+    addLegendItem('rgba(255, 84, 54, 0.55)', 'Active Spawning Ban');
+    addLegendItem('rgba(255, 134, 106, 0.35)', 'Marine Reserve Buffer');
+    addLegendItem('rgba(255, 54, 54, 0.6)', 'Seasonal Spawning Line', 'dotted-line');
+    addLegendItem('var(--ink)', 'Protected Harbors', 'circle');
   }
 }
 
