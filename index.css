@@ -1,5 +1,5 @@
 /* 
-  Thalassa - Design System & UI Styles
+  Matsya Drishti - Design System & UI Styles
   Aesthetic: Claude Warm Editorial Design. Tinted cream canvas, serif display typography,
              coral primary CTAs, soft cream card surfaces, and dark navy product surfaces.
 */
@@ -808,7 +808,7 @@ header {
   border-left: 3px solid var(--error);
 }
 
-.route-column.thalassa-route {
+.route-column.matsya-drishti-route {
   border-left: 3px solid var(--action-blue);
   background-color: var(--pale-blue);
 }
@@ -895,7 +895,7 @@ header {
   border-left: 3px solid var(--error);
 }
 
-#route-section .info-card .route-column.thalassa-route {
+#route-section .info-card .route-column.matsya-drishti-route {
   border-left: 3px solid var(--primary-color);
   background-color: var(--surface-dark-elevated);
 }

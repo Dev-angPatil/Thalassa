@@ -7,7 +7,7 @@ from sklearn.cluster import DBSCAN
 from scipy.spatial import ConvexHull
 import httpx
 import os
-app = FastAPI(title="Thalassa Fish Clustering API")
+app = FastAPI(title="Matsya Drishti Fish Clustering API")
 
 # Enable CORS for development
 app.add_middleware(
@@ -66,7 +66,7 @@ def generate_synthetic_data_if_missing():
                     
         df = pd.DataFrame(records, columns=['latitude', 'longitude', 'species', 'month', 'sst', 'chlorophyll', 'catch_yield'])
         df.to_csv(DATA_PATH, index=False)
-        print(f"[Thalassa Backend] Generated synthetic historic catches CSV containing {len(df)} records.")
+        print(f"[Matsya Drishti Backend] Generated synthetic historic catches CSV containing {len(df)} records.")
 
 generate_synthetic_data_if_missing()
 

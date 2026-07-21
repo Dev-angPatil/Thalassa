@@ -1,5 +1,5 @@
 /**
- * Thalassa Data Simulation and Analysis Engine
+ * Matsya Drishti Data Simulation and Analysis Engine
  * Calculates Fishing Favorability and Conservation Sensitivity grid matrices.
  */
 

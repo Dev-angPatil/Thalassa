@@ -13,7 +13,7 @@ const puppeteer = require('puppeteer');
 
         // Navigate to the dashboard
         await page.goto('http://localhost:3000/', { waitUntil: 'networkidle2' });
-        console.log("Navigated to Thalassa Map Dashboard.");
+        console.log("Navigated to Matsya Drishti Map Dashboard.");
 
         // Wait for map layers to render
         await new Promise(r => setTimeout(r, 3000));

@@ -2,9 +2,9 @@
 
 ## Initial Request — 2026-07-19T21:12:19Z
 
-Thalassa is a Marine Digital Twin for the Kerala Coastline that balances sustainable fishing yields with marine conservation. It features a sleek dark-mode mission control UI, real-time satellite data fusion, an A* eco-routing engine, and a commercial profit optimizer to help fishers maximize revenue while protecting critical spawning zones.
+Matsya Drishti is a Marine Digital Twin for the Kerala Coastline that balances sustainable fishing yields with marine conservation. It features a sleek dark-mode mission control UI, real-time satellite data fusion, an A* eco-routing engine, and a commercial profit optimizer to help fishers maximize revenue while protecting critical spawning zones.
 
-Working directory: /home/deu/Coding Repos/Archive/Thalassa
+Working directory: /home/deu/Coding Repos/Archive/Matsya Drishti
 Integrity mode: development
 
 ## Requirements

@@ -1,4 +1,4 @@
-# E2E Test Infra: Thalassa Marine Digital Twin
+# E2E Test Infra: Matsya Drishti Marine Digital Twin
 
 ## Test Philosophy
 - Opaque-box, requirement-driven. No dependency on implementation design.

@@ -1,4 +1,4 @@
-name: Thalassa
+name: Matsya Drishti
 hackathon_fit_score: 7.7
 maturity: Gold
 status: Complete
@@ -15,7 +15,7 @@ tagline: High-Fidelity Coastal Digital Twin of Kerala
 domain: climate, ocean, ml
 tasks_completed:
 - Created submission folder
-- Generated thalassa_devpost_submission.md
+- Generated matsya-drishti_devpost_submission.md
 - Generated demo_script.md
 - Generated judging_checklist.md
 - Generated pitch_deck_outline.md
@@ -27,8 +27,8 @@ tasks_completed:
 - Rendered interactive map legends and scale bars directly on HTML5 Canvas
 tasks_remaining: []
 blockers: []
-second_brain_context: /home/deu/Second Brain/10 AI/Context/Coding Repos/Thalassa/Ctx - Thalassa Context.md
+second_brain_context: /home/deu/Second Brain/10 AI/Context/Coding Repos/Matsya Drishti/Ctx - Matsya Drishti Context.md
 notes: 'Domain: ai, ml, ocean'
-path: /home/deu/Coding Repos/Thalassa
+path: /home/deu/Coding Repos/Matsya Drishti
 tier: Tier 1
 potential_winnings: 2000000

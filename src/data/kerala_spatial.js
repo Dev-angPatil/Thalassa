@@ -1,5 +1,5 @@
 /**
- * Thalassa Geospatial & Historical Reference Datasets for the Kerala Coast
+ * Matsya Drishti Geospatial & Historical Reference Datasets for the Kerala Coast
  * Bounding Box: 8.0°N - 12.8°N Latitude, 74.5°E - 77.5°E Longitude
  */
 

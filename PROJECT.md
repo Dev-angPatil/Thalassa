@@ -1,7 +1,7 @@
-# Project: Thalassa Marine Digital Twin
+# Project: Matsya Drishti Marine Digital Twin
 
 ## Architecture
-Thalassa is structured as a client-side web application leveraging Vanilla HTML5/CSS/JavaScript. It includes:
+Matsya Drishti is structured as a client-side web application leveraging Vanilla HTML5/CSS/JavaScript. It includes:
 - **UI & CSS Layer** (`index.html`, `index.css`): Modern premium dark-mode dashboard styled based on Cohere design tokens. Telemetry and route details are structured into decluttered cards and visual tabs.
 - **Application Controller** (`src/app.js`): Binds UI controls, initializes Leaflet, renders map grid overlays, handles user interactions, runs scenario presets, and coordinates routing and financial calculations.
 - **Data Engine** (`src/lib/data_engine.js`): Coordinates 40x30 spatial grid modeling. Implements grid cell state calculations, spawning restrictions, A* eco-routing, spline path smoothing, and species/vessel financial optimization.

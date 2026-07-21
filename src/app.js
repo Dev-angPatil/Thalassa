@@ -1,5 +1,5 @@
 /**
- * Thalassa Digital Twin Interface Controller
+ * Matsya Drishti Digital Twin Interface Controller
  * Manages native Leaflet map layers, telemetry sidebar, seasonal timeline, live API sync, scenario presets, and guided tours.
  */
 
@@ -65,7 +65,7 @@ let tourStep = 0;
 
 const tourSteps = [
   {
-    title: "Welcome to Thalassa 🌊",
+    title: "Welcome to Matsya Drishti 🌊",
     desc: "This digital twin maps the Kerala coastline to balance sustainable fishing yields with marine reserve spawning bans. Let's take a 1-minute guided tour of its core capabilities.",
     highlightId: "btn-start-tour",
     position: "bottom"
@@ -246,7 +246,7 @@ function init() {
   window.calculateOptimizedRoute = calculateOptimizedRoute;
   window.FISHING_HARBORS = FISHING_HARBORS;
 
-  showToast("Thalassa workspace initialized. Native Leaflet layers active.");
+  showToast("Matsya Drishti workspace initialized. Native Leaflet layers active.");
 
   // Initialize default time mode to Real-Time
   currentTimeMode = 'simulation';
@@ -1427,7 +1427,7 @@ function updateRouteTelemetry() {
     stdStatus.className = "comparison-status status-success";
   }
 
-  // Thalassa Route (Optimized Compliant) Metrics
+  // Matsya Drishti Route (Optimized Compliant) Metrics
   document.getElementById('route-opt-distance').textContent = `${optimizedRoute.distanceKM} km`;
   document.getElementById('route-opt-time').textContent = `${optimizedRoute.estTimeHours} hrs`;
   document.getElementById('route-opt-fuel').textContent = `${optFuelCost.toLocaleString()} INR`;

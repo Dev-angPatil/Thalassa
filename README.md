@@ -1,4 +1,4 @@
-# 🌊 Thalassa: Kerala Marine Digital Twin
+# 🌊 Matsya Drishti: Kerala Marine Digital Twin
 
 > **Bridging the Blue Economy & Marine Biodiversity Conservation with Real-Time AI, True A* Eco-Routing, and Satellite Data Fusion.**
 > 
@@ -10,9 +10,9 @@
 
 Ocean stewardship is a delicate balance: small-to-medium scale fishers need to maximize their economic yields, while marine biologists must protect fragile spawning habitats. Current maritime navigation tools offer basic route planning but lack oceanographic intelligence.
 
-**Thalassa** is a next-generation Marine Digital Twin for the Kerala Coastline. It merges live satellite oceanography (SST, Chlorophyll, currents) and real-time weather forecasts (wind speed, wave height) with a **True A* Eco-Routing engine** and a **Commercial Profit Optimizer**. 
+**Matsya Drishti** is a next-generation Marine Digital Twin for the Kerala Coastline. It merges live satellite oceanography (SST, Chlorophyll, currents) and real-time weather forecasts (wind speed, wave height) with a **True A* Eco-Routing engine** and a **Commercial Profit Optimizer**. 
 
-By calculating optimal routes that strictly deflect around active seasonal spawning bans and calculating actual fuel cost adjustments from opposing sea-current vectors, Thalassa empowers fishers to make high-yield, legally compliant, and resource-efficient trips.
+By calculating optimal routes that strictly deflect around active seasonal spawning bans and calculating actual fuel cost adjustments from opposing sea-current vectors, Matsya Drishti empowers fishers to make high-yield, legally compliant, and resource-efficient trips.
 
 ---
 
@@ -31,7 +31,7 @@ By calculating optimal routes that strictly deflect around active seasonal spawn
 *   Runs a native **A\*** pathfinding search across the high-density grid.
 *   Treats landmass and **seasonally restricted spawning zones** as absolute obstacles.
 *   Applies a **cubic window interpolation spline** (`smoothPath`) to eliminate rigid grid angles and draw realistic vessel routes.
-*   Renders a side-by-side visual comparison between the straight **Standard Route** (red dashed, flagging violation crossings) and the **Thalassa Eco-Route** (blue, eco-compliant).
+*   Renders a side-by-side visual comparison between the straight **Standard Route** (red dashed, flagging violation crossings) and the **Matsya Drishti Eco-Route** (blue, eco-compliant).
 
 ### 4. Commercial Profit Optimizer (R4)
 *   **Target Species Selector** (Indian Oil Sardine, Indian Mackerel, Penaeid Shrimp, Yellowfin Tuna) which dynamically alters market pricing and spawning sensitivity curves.
@@ -59,7 +59,7 @@ By calculating optimal routes that strictly deflect around active seasonal spawn
 
 ## 📈 E2E Test Suite & Code Quality
 
-Thalassa contains a robust, programmatically generated automated test suite running 60 distinct E2E verification points checking:
+Matsya Drishti contains a robust, programmatically generated automated test suite running 60 distinct E2E verification points checking:
 *   **T1 UI/UX & Layout**: Base canvas dark style, CartoDB integration, telemetry panel layout.
 *   **T2 Grid Density**: Verification of the 1,200 grid cells (40x30 density).
 *   **T3/T4 Router & Optimizer**: Asserting that clicks calculate valid paths, species selection alters margins, and state variables are properly bound.
@@ -92,5 +92,5 @@ This spins up a headless browser, executes all 60 test suites, and asserts that 
 ## 📜 Pitch Deck Narrative: The Digital Twin Impact
 
 1.  **Safety First**: High winds (>25 km/h) and waves (>2.0m) dynamically trigger harbor warnings on the sidebar, protecting traditional fishers from hazardous seas.
-2.  **Compliance Simplified**: Traditional spawning bans are often ignored because fishers cannot calculate manual bypass routes. Thalassa does it automatically in real time.
+2.  **Compliance Simplified**: Traditional spawning bans are often ignored because fishers cannot calculate manual bypass routes. Matsya Drishti does it automatically in real time.
 3.  **Economic Vitality**: Opposing current vector compensation helps fishers select paths with minimal hydrodynamic drag, saving thousands of liters of fuel.

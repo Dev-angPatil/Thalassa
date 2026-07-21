@@ -1,5 +1,5 @@
 /**
- * Thalassa API Fetch Client
+ * Matsya Drishti API Fetch Client
  * Handles real-time queries to INCOIS ERDDAP and Copernicus (CMEMS) API endpoints,
  * with automatic simulated fallbacks for offline testing and zero-friction execution.
  */
@@ -49,7 +49,7 @@ export async function fetchIncoisErddapData(parameter = 'sst', date = null) {
   // Fallback to absolute URL if proxy is not configured (will likely hit CORS in browser, but good for raw fetch/node)
   const absoluteUrl = `https://erddap.incois.gov.in/erddap/griddap/${datasetId}.json?${queryStr}`;
 
-  console.log(`[Thalassa API Client] Querying INCOIS ERDDAP (Proxy): ${relativeUrl}`);
+  console.log(`[Matsya Drishti API Client] Querying INCOIS ERDDAP (Proxy): ${relativeUrl}`);
 
   try {
     const response = await fetch(relativeUrl, { 
@@ -64,7 +64,7 @@ export async function fetchIncoisErddapData(parameter = 'sst', date = null) {
     const json = await response.json();
     return parseErddapResponse(json, parameter);
   } catch (error) {
-    console.warn(`[Thalassa API Client] Proxy request failed, trying absolute URL direct fallback...`);
+    console.warn(`[Matsya Drishti API Client] Proxy request failed, trying absolute URL direct fallback...`);
     try {
       const response = await fetch(absoluteUrl, { 
         method: 'GET',
@@ -78,7 +78,7 @@ export async function fetchIncoisErddapData(parameter = 'sst', date = null) {
       const json = await response.json();
       return parseErddapResponse(json, parameter);
     } catch (fallbackError) {
-      console.warn(`[Thalassa API Client] Live INCOIS ERDDAP request failed. Falling back to local model. Reason: ${fallbackError.message}`);
+      console.warn(`[Matsya Drishti API Client] Live INCOIS ERDDAP request failed. Falling back to local model. Reason: ${fallbackError.message}`);
       return null; // Signals data_engine to use simulated fallback
     }
   }
@@ -91,7 +91,7 @@ export async function fetchIncoisErddapData(parameter = 'sst', date = null) {
  */
 export async function fetchCopernicusMarineData(parameter = 'currents', token = null) {
   if (!token) {
-    console.log(`[Thalassa API Client] No Copernicus authorization token provided. Using simulated model.`);
+    console.log(`[Matsya Drishti API Client] No Copernicus authorization token provided. Using simulated model.`);
     return null;
   }
 
@@ -102,7 +102,7 @@ export async function fetchCopernicusMarineData(parameter = 'currents', token = 
   
   const queryUrl = `https://marine-api.copernicus.eu/subset/${datasetId}?latMin=${LAT_MIN}&latMax=${LAT_MAX}&lonMin=${LNG_MIN}&lonMax=${LNG_MAX}&param=${parameter}`;
 
-  console.log(`[Thalassa API Client] Querying Copernicus Marine Service API: ${queryUrl}`);
+  console.log(`[Matsya Drishti API Client] Querying Copernicus Marine Service API: ${queryUrl}`);
 
   try {
     const response = await fetch(queryUrl, {
@@ -122,7 +122,7 @@ export async function fetchCopernicusMarineData(parameter = 'currents', token = 
     const arrayBuffer = await response.arrayBuffer();
     return arrayBuffer;
   } catch (error) {
-    console.warn(`[Thalassa API Client] Copernicus API request failed: ${error.message}`);
+    console.warn(`[Matsya Drishti API Client] Copernicus API request failed: ${error.message}`);
     return null;
   }
 }
@@ -165,7 +165,7 @@ function parseErddapResponse(json, parameter) {
       points: gridPoints
     };
   } catch (err) {
-    console.error(`[Thalassa API Client] Failed to parse ERDDAP response format:`, err);
+    console.error(`[Matsya Drishti API Client] Failed to parse ERDDAP response format:`, err);
     return null;
   }
 }
@@ -179,7 +179,7 @@ export async function fetchOpenMeteoForecast(lat, lng) {
   const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=wind_speed_10m,wind_direction_10m`;
   const marineUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lng}&current=wave_height,wave_period`;
 
-  console.log(`[Thalassa API Client] Querying Open-Meteo at ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+  console.log(`[Matsya Drishti API Client] Querying Open-Meteo at ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
 
   try {
     const [weatherRes, marineRes] = await Promise.all([
@@ -204,7 +204,7 @@ export async function fetchOpenMeteoForecast(lat, lng) {
       waveUnit
     };
   } catch (error) {
-    console.warn(`[Thalassa API Client] Open-Meteo query failed: ${error.message}`);
+    console.warn(`[Matsya Drishti API Client] Open-Meteo query failed: ${error.message}`);
     return null;
   }
 }
@@ -286,7 +286,7 @@ export function parseNetCdfBuffer(arrayBuffer) {
     
     return null;
   } catch (error) {
-    console.error(`[Thalassa NetCDF Parser] Error parsing NetCDF arrayBuffer:`, error);
+    console.error(`[Matsya Drishti NetCDF Parser] Error parsing NetCDF arrayBuffer:`, error);
     return null;
   }
 }
