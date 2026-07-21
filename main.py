@@ -1,10 +1,18 @@
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 import pandas as pd
 import numpy as np
 from sklearn.cluster import DBSCAN
 from scipy.spatial import ConvexHull
+import httpx
 import os
+
+print(f"DEBUG: Current working directory: {os.getcwd()}")
+print(f"DEBUG: Files in CWD: {os.listdir('.')}")
+print(f"DEBUG: Does dist exist? {os.path.exists('dist')}")
+if os.path.exists("dist"):
+    print(f"DEBUG: Files in dist: {os.listdir('dist')}")
 
 app = FastAPI(title="Thalassa Fish Clustering API")
 
@@ -118,3 +126,21 @@ def get_fish_clusters(species: str = "sardine", month: int = 7):
         })
         
     return {"clusters": clusters}
+
+@app.get("/erddap/{path:path}")
+async def proxy_erddap(path: str, request: Request):
+    query_params = dict(request.query_params)
+    target_url = f"https://erddap.incois.gov.in/erddap/{path}"
+    
+    async with httpx.AsyncClient() as client:
+        # Pass headers and query params, disabling strict SSL checks if servers have certificates issues
+        resp = await client.get(target_url, params=query_params, verify=False)
+        headers = {k: v for k, v in resp.headers.items() if k.lower() not in ['content-encoding', 'transfer-encoding', 'content-length']}
+        return Response(content=resp.content, status_code=resp.status_code, headers=headers)
+
+# Mount static site build outputs
+if os.path.exists("dist"):
+    if os.path.exists("dist/tests"):
+        app.mount("/tests", StaticFiles(directory="dist/tests", html=True), name="tests")
+    app.mount("/", StaticFiles(directory="dist", html=True), name="static")
+
