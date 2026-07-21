@@ -12,6 +12,11 @@ import { SamudraAssistant } from './lib/voice_assistant.js';
 const openMeteoCache = new Map();
 let mouseMoveDebounceTimer = null;
 
+// Dynamic backend URL: localhost:3001 for local server.js, Render for production
+const SERVER_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+  ? 'http://localhost:3001'
+  : 'https://thalassa-pdcq.onrender.com';
+
 // Global state
 let currentMode = 'fisherman'; // 'fisherman' or 'conservationist'
 let currentTimeMode = 'realtime'; // 'realtime' or 'simulation'
@@ -305,7 +310,7 @@ function init() {
           cutsSpawningBan: state.optimizedRoute.cutsSpawningBan
         } : null
       };
-      fetch('https://thalassa-pdcq.onrender.com/api/sync-state', {
+      fetch(`${SERVER_URL}/api/sync-state`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -765,7 +770,7 @@ function setupEventListeners() {
       btnGlobalSos.disabled = true;
       
       try {
-        const res = await fetch('https://thalassa-pdcq.onrender.com/api/outbound', {
+        const res = await fetch(`${SERVER_URL}/api/outbound`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ phoneNumber: phoneInput })
@@ -804,7 +809,7 @@ function setupEventListeners() {
       statusDiv.textContent = 'Initiating call...';
       
       try {
-        const res = await fetch('https://thalassa-pdcq.onrender.com/api/outbound', {
+        const res = await fetch(`${SERVER_URL}/api/outbound`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ phoneNumber: phoneInput })

@@ -175,9 +175,73 @@ async def proxy_erddap(path: str, request: Request):
         headers = {k: v for k, v in resp.headers.items() if k.lower() not in ['content-encoding', 'transfer-encoding', 'content-length']}
         return Response(content=resp.content, status_code=resp.status_code, headers=headers)
 
+# ─── Vapi Outbound & State Sync Proxy ───────────────────────────────────────
+
+thalassa_live_state = {}
+
+@app.post("/api/sync-state")
+async def sync_state(request: Request):
+    global thalassa_live_state
+    try:
+        data = await request.json()
+        thalassa_live_state = data
+        return {"status": "ok"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+class OutboundCallRequest(BaseModel):
+    phoneNumber: str
+
+@app.post("/api/outbound")
+async def outbound_call(body: OutboundCallRequest):
+    vapi_api_key = os.environ.get("VAPI_API_KEY", "")
+    phone_number_id = os.environ.get("VAPI_PHONE_NUMBER_ID", "")
+    if not vapi_api_key or not phone_number_id:
+        raise HTTPException(status_code=500, detail="VAPI configuration missing on server.")
+
+    s = thalassa_live_state.get("selectedCell", {}) or {}
+    w = thalassa_live_state.get("weatherCache", {}) or {}
+    
+    warning = "URGENT ALERT: This is Samudra, the AI marine safety system. We are calling to warn you about conditions at your selected location."
+    if s.get("lat") or w.get("temperature"):
+        temp = w.get("temperature") or s.get("sst") or "unknown"
+        wind = w.get("windspeed") or s.get("windSpeed") or "unknown"
+        wave = s.get("waveHeight") or w.get("wave_height") or "unknown"
+        warning += f" Sea surface temp is {temp} degrees. Wind speed is {wind} km/h. Wave height is {wave} meters."
+    warning += " Are you currently safe?"
+
+    payload = {
+        "phoneNumberId": phone_number_id,
+        "assistant": {
+            "firstMessage": warning,
+            "model": {
+                "provider": "openai",
+                "model": "gpt-4o-mini",
+                "messages": [{"role": "system", "content": "You are Samudra, an urgent marine safety AI assistant."}]
+            }
+        },
+        "customer": {"number": body.phoneNumber}
+    }
+
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        resp = await client.post(
+            "https://api.vapi.ai/call/phone",
+            json=payload,
+            headers={
+                "Authorization": f"Bearer {vapi_api_key}",
+                "Content-Type": "application/json"
+            }
+        )
+
+    if resp.status_code not in (200, 201):
+        return {"success": False, "error": resp.text}
+    
+    return {"success": True, "callData": resp.json()}
+
 # Mount static site build outputs
 if os.path.exists("dist"):
     if os.path.exists("dist/tests"):
         app.mount("/tests", StaticFiles(directory="dist/tests", html=True), name="tests")
     app.mount("/", StaticFiles(directory="dist", html=True), name="static")
+
 
