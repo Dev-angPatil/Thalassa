@@ -7,13 +7,6 @@ from sklearn.cluster import DBSCAN
 from scipy.spatial import ConvexHull
 import httpx
 import os
-
-print(f"DEBUG: Current working directory: {os.getcwd()}")
-print(f"DEBUG: Files in CWD: {os.listdir('.')}")
-print(f"DEBUG: Does dist exist? {os.path.exists('dist')}")
-if os.path.exists("dist"):
-    print(f"DEBUG: Files in dist: {os.listdir('dist')}")
-
 app = FastAPI(title="Thalassa Fish Clustering API")
 
 # Enable CORS for development
