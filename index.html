@@ -115,6 +115,10 @@
                   <option value="azheekkal">Azheekkal (Kannur)</option>
                 </select>
               </div>
+              <div class="hud-control-item" style="min-width: 130px;">
+                <span class="mono-label">Weather: <span id="weather-val" style="color: var(--brand-green);">1.0x</span></span>
+                <input type="range" id="weather-intensity-slider" min="1.0" max="2.5" step="0.5" value="1.0" style="width: 100%; height: 4px; background: var(--hairline); outline: none; -webkit-appearance: none; border-radius: 2px;">
+              </div>
             </div>
           </div>
         </div>
@@ -133,7 +137,7 @@
 
         <!-- Timeline / Slider Panel (Dark Code Surface) -->
         <div class="timeline-panel" id="timeline-panel">
-          <div class="timeline-controls">
+          <div class="timeline-controls" style="display: flex; gap: 8px;">
             <button id="btn-play-pause" class="play-btn" title="Toggle Simulation Time Playback">
               <!-- Play Icon SVG -->
               <svg id="play-icon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
@@ -142,6 +146,12 @@
               <!-- Pause Icon SVG -->
               <svg id="pause-icon" style="display:none;" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
                 <path d="M6 19H10V5H6V19ZM14 5V19H18V5H14Z"/>
+              </svg>
+            </button>
+            <button id="btn-simulate-transit" class="play-btn" title="Simulate Route Transit (Animate Vessel)" style="background: var(--brand-tag);">
+              <!-- Navigation Icon SVG -->
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
+                <path d="M21 3L3 10.53V11.51L9.84 14.16L12.49 21H13.47L21 3Z"/>
               </svg>
             </button>
           </div>

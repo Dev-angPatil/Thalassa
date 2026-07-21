@@ -28,6 +28,10 @@ let playInterval = null;
 let map = null; // Leaflet map instance
 let samudra = null; // Samudra AI Voice Assistant instance
 let lastWeatherData = null; // Cache last weather data for Samudra
+let weatherIntensity = 1.0;
+let vesselMarkerStd = null;
+let isTransiting = false;
+let violationAlertActive = false;
 
 // Animation helpers
 let pulseState = 0;
@@ -183,6 +187,15 @@ function init() {
     interactive: false
   });
 
+  vesselMarkerStd = L.circleMarker([0, 0], {
+    radius: 4.5,
+    color: 'white',
+    weight: 1.5,
+    fillColor: 'var(--brand-error, #d45656)',
+    fillOpacity: 1,
+    interactive: false
+  });
+
   // Create grid cell rectangles (40x30 = 1200 cells)
   const latStep = (LAT_MAX - LAT_MIN) / 40;
   const lngStep = (LNG_MAX - LNG_MIN) / 30;
@@ -266,7 +279,46 @@ function init() {
 function tick() {
   pulseState = (pulseState + 0.05) % (2 * Math.PI);
   
-  if (optimizedRoute && vesselMarker && map.hasLayer(vesselMarker)) {
+  if (isTransiting && optimizedRoute) {
+    vesselProgress += 0.005; // speed of transit animation
+    if (vesselProgress >= 1.0) {
+      vesselProgress = 1.0;
+      isTransiting = false;
+      showToast("Transit simulation completed.", "green");
+    }
+    
+    // Animate Eco-route vessel
+    if (optimizedRoute.path && optimizedRoute.path.length > 0) {
+      const vPos = getPositionAlongPath(optimizedRoute.path, vesselProgress);
+      if (vPos) {
+        if (!map.hasLayer(vesselMarker)) vesselMarker.addTo(map);
+        vesselMarker.setLatLng([vPos.lat, vPos.lng]);
+      }
+    }
+    
+    // Animate Standard route vessel
+    if (optimizedRoute.stdPath && optimizedRoute.stdPath.length > 0) {
+      const vPosStd = getPositionAlongPath(optimizedRoute.stdPath, vesselProgress);
+      if (vPosStd) {
+        if (!map.hasLayer(vesselMarkerStd)) vesselMarkerStd.addTo(map);
+        vesselMarkerStd.setLatLng([vPosStd.lat, vPosStd.lng]);
+        
+        // Check for Spawning Ban crossing in real-time
+        let nearestCell = null;
+        let minD = Infinity;
+        for (const cell of gridData) {
+          const d = getDistanceKM(vPosStd.lat, vPosStd.lng, cell.lat, cell.lng);
+          if (d < minD) {
+            minD = d;
+            nearestCell = cell;
+          }
+        }
+        if (nearestCell && nearestCell.isRestrictedZone && minD < 10) {
+          showViolationAlert(nearestCell);
+        }
+      }
+    }
+  } else if (optimizedRoute && vesselMarker && map.hasLayer(vesselMarker)) {
     vesselProgress = (vesselProgress + 0.002) % 1.0;
     
     // Animate vessel coordinates along route path
@@ -274,6 +326,7 @@ function tick() {
     if (vPos) {
       vesselMarker.setLatLng([vPos.lat, vPos.lng]);
     }
+    if (map.hasLayer(vesselMarkerStd)) map.removeLayer(vesselMarkerStd);
   }
   
   // Pulse selected port marker size
@@ -351,6 +404,15 @@ function initGridLines() {
 // Regenerate grid matrices based on state
 function updateGrid() {
   gridData = generateDigitalTwinGrid(dayOfYear, liveData);
+  
+  // Apply weather intensity multiplier to current speeds
+  if (typeof weatherIntensity !== 'undefined' && weatherIntensity > 1.0) {
+    gridData.forEach(cell => {
+      if (!cell.isLand) {
+        cell.currentSpeed = parseFloat((cell.currentSpeed * weatherIntensity).toFixed(2));
+      }
+    });
+  }
   
   // Link gridData cell items to their respective layer shapes
   gridData.forEach(cell => {
@@ -620,6 +682,30 @@ function setupEventListeners() {
 
   // Play Pause animation control
   document.getElementById('btn-play-pause').addEventListener('click', togglePlay);
+
+  // Weather slider control
+  const weatherSlider = document.getElementById('weather-intensity-slider');
+  if (weatherSlider) {
+    weatherSlider.addEventListener('input', (e) => {
+      weatherIntensity = parseFloat(e.target.value);
+      document.getElementById('weather-val').textContent = `${weatherIntensity.toFixed(1)}x`;
+      updateGrid();
+    });
+  }
+
+  // Simulate transit button control
+  const simTransitBtn = document.getElementById('btn-simulate-transit');
+  if (simTransitBtn) {
+    simTransitBtn.addEventListener('click', () => {
+      if (!optimizedRoute) {
+        showToast("Please select a target grid cell on the map first to generate a route.", "orange");
+        return;
+      }
+      isTransiting = true;
+      vesselProgress = 0;
+      showToast("Starting route transit simulation...", "blue");
+    });
+  }
 
   // Live API Fetch trigger
   document.getElementById('btn-fetch-live').addEventListener('click', triggerLiveApiFetch);
@@ -1244,8 +1330,17 @@ function updateTelemetryCard(cell) {
 
 function displayForecastData(forecast) {
   if (forecast && forecast.windSpeed !== null) {
-    document.getElementById('telemetry-wind').textContent = `${forecast.windSpeed} ${forecast.windUnit} @ ${forecast.windDir}°`;
-    document.getElementById('telemetry-wave').textContent = `${forecast.waveHeight} ${forecast.waveUnit} @ ${forecast.wavePeriod}s`;
+    const wIntensity = typeof weatherIntensity !== 'undefined' ? weatherIntensity : 1.0;
+    const scaledWind = parseFloat((forecast.windSpeed * wIntensity).toFixed(1));
+    const scaledWave = parseFloat((forecast.waveHeight * wIntensity).toFixed(2));
+    document.getElementById('telemetry-wind').textContent = `${scaledWind} ${forecast.windUnit} @ ${forecast.windDir}°`;
+    document.getElementById('telemetry-wave').textContent = `${scaledWave} ${forecast.waveUnit} @ ${forecast.wavePeriod}s`;
+    
+    if (wIntensity > 1.0) {
+      if (scaledWind > 20 || scaledWave > 1.5) {
+        showToast(`⚠️ State Alert: Rough sea conditions (Wind: ${scaledWind} km/h, Wave: ${scaledWave}m)!`, "orange");
+      }
+    }
   } else {
     document.getElementById('telemetry-wind').textContent = '--';
     document.getElementById('telemetry-wave').textContent = '--';
@@ -1970,5 +2065,49 @@ async function updateFishClusters() {
   } catch (err) {
     console.warn("Failed to fetch clusters from Python FastAPI ML service", err);
   }
+}
+
+function showViolationAlert(cell) {
+  if (violationAlertActive) return;
+  violationAlertActive = true;
+  
+  // Show high-contrast alert modal overlay
+  const overlay = document.createElement('div');
+  overlay.className = 'emergency-overlay';
+  overlay.style.display = 'flex';
+  overlay.style.alignItems = 'center';
+  overlay.style.justifyContent = 'center';
+  overlay.style.position = 'fixed';
+  overlay.style.top = '0';
+  overlay.style.left = '0';
+  overlay.style.width = '100vw';
+  overlay.style.height = '100vh';
+  overlay.style.background = 'rgba(20, 5, 5, 0.95)';
+  overlay.style.zIndex = '9999';
+  
+  overlay.innerHTML = `
+    <div class="emergency-overlay-content" style="max-width: 450px; text-align: center; border: 2px solid var(--error, #d45656); border-radius: var(--radius-lg); padding: 32px; background: var(--surface-code); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
+      <div style="margin: 0 auto 16px auto; width: 64px; height: 64px; border-radius: 50%; border: 2px solid var(--error, #d45656); display: flex; align-items: center; justify-content: center; background: rgba(212, 86, 86, 0.1);">
+        <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="var(--error, #d45656)">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+        </svg>
+      </div>
+      <h2 style="color: var(--error, #d45656); margin-bottom: 12px; font-family: var(--font-mono); letter-spacing: 1px;">🚨 REGULATORY VIOLATION</h2>
+      <p style="color: var(--on-dark); font-size: 14px; line-height: 1.6; margin-bottom: 24px; font-family: var(--font-body);">
+        Vessel is currently crossing an active **Spawning Ban Zone** near **${cell.lat.toFixed(2)}°N, ${cell.lng.toFixed(2)}°E**!<br><br>
+        <strong>Penalty Level:</strong> Critical Regulatory Non-Compliance<br>
+        <strong>Fine Applied:</strong> <span style="color: var(--error, #d45656); font-weight: 700;">50,000 INR</span> deducted from standard route margin projections.
+      </p>
+      <button id="violation-close-btn" style="background: var(--error, #d45656); color: white; border: none; font-weight: 600; font-family: var(--font-body); width: 100%; height: 44px; border-radius: 22px; cursor: pointer; transition: opacity 0.2s;">Acknowledge Fine</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  
+  document.getElementById('violation-close-btn').addEventListener('click', () => {
+    overlay.remove();
+    setTimeout(() => {
+      violationAlertActive = false;
+    }, 8000); // 8 second cooldown
+  });
 }
 

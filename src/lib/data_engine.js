@@ -366,6 +366,25 @@ export function calculateOptimizedRoute(portId, targetCell, grid, dayOfYear = 17
           continue;
         }
 
+        // Add opposing currents cost penalty to force A* to route around high-resistance zones
+        if (avoidRestricted) {
+          const currentSpeed = neighbor.currentSpeed || 0;
+          const currentDir = neighbor.currentDir || 0;
+          const dLat = neighbor.lat - current.lat;
+          const dLng = neighbor.lng - current.lng;
+          const len = Math.hypot(dLat, dLng);
+          if (len > 0 && currentSpeed > 0) {
+            const vesselVector = { y: dLat / len, x: dLng / len };
+            const currentRad = (currentDir * Math.PI) / 180;
+            const currentVector = { y: Math.cos(currentRad) * currentSpeed, x: Math.sin(currentRad) * currentSpeed };
+            const dot = vesselVector.x * currentVector.x + vesselVector.y * currentVector.y;
+            if (dot < 0) {
+              // Add a cost penalty for opposing currents
+              penalty += (-dot * currentSpeed * 25);
+            }
+          }
+        }
+
         const moveCost = getDistanceKM(current.lat, current.lng, neighbor.lat, neighbor.lng);
         const tentativeGScore = (gScore.get(getGridId(current)) ?? Infinity) + moveCost + penalty;
 
