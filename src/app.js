@@ -426,17 +426,19 @@ function updateMapLayers() {
 
     if (currentMode === 'fisherman') {
       if (activeOverlays.sst && !activeOverlays.chl) {
-        const alpha = Math.max(0.1, (cell.sst - 25) / 6.0);
-        fillColor = '#4a4a46';
-        fillOpacity = alpha * 0.45;
+        // Temperature overlay: Warm orange/red shading
+        const alpha = Math.max(0.1, Math.min(1.0, (cell.sst - 25) / 6.0));
+        fillColor = '#ff7759'; // Coral orange
+        fillOpacity = alpha * 0.6;
       } else if (activeOverlays.chl && !activeOverlays.sst) {
+        // Chlorophyll/plankton food overlay: Medium emerald green shading
         const alpha = Math.min(1.0, Math.max(0.1, cell.chlorophyll / 5.0));
-        fillColor = '#6c6c64';
-        fillOpacity = alpha * 0.45;
+        fillColor = '#00b48a'; // Medium mint green
+        fillOpacity = alpha * 0.6;
       } else if (activeOverlays.sst && activeOverlays.chl) {
-        const alpha = Math.max(0.1, cell.fishingScore / 100);
-        fillColor = '#141413';
-        fillOpacity = alpha * 0.65;
+        // Combined Fishing Favorability: Vibrant glowing mint green hotspots
+        fillColor = '#00d4a4'; // Vibrant mint green
+        fillOpacity = (cell.fishingScore / 100) * 0.7;
       }
     } else {
       if (activeOverlays.mpa && cell.conservationScore > 30) {
@@ -1869,14 +1871,14 @@ function updateMapLegend() {
     title.textContent = 'YIELD ANALYSIS LEGEND';
 
     if (activeOverlays.sst && !activeOverlays.chl) {
-      addLegendItem('rgba(74, 74, 70, 0.45)', 'Sea Temp (Warm/High)');
-      addLegendItem('rgba(74, 74, 70, 0.15)', 'Sea Temp (Cool/Low)');
+      addLegendItem('rgba(255, 119, 89, 0.6)', 'Sea Temp (Warm/High)');
+      addLegendItem('rgba(255, 119, 89, 0.15)', 'Sea Temp (Cool/Low)');
     } else if (activeOverlays.chl && !activeOverlays.sst) {
-      addLegendItem('rgba(108, 108, 100, 0.45)', 'Chlorophyll (High Food)');
-      addLegendItem('rgba(108, 108, 100, 0.15)', 'Chlorophyll (Low Food)');
+      addLegendItem('rgba(0, 180, 138, 0.6)', 'Chlorophyll (High Food)');
+      addLegendItem('rgba(0, 180, 138, 0.15)', 'Chlorophyll (Low Food)');
     } else if (activeOverlays.sst && activeOverlays.chl) {
-      addLegendItem('rgba(20, 20, 19, 0.65)', 'Optimal Yield (High)');
-      addLegendItem('rgba(20, 20, 19, 0.2)', 'Optimal Yield (Low)');
+      addLegendItem('rgba(0, 212, 164, 0.7)', 'Optimal Yield (High)');
+      addLegendItem('rgba(0, 212, 164, 0.15)', 'Optimal Yield (Low)');
     } else {
       addLegendItem('rgba(0,0,0,0)', 'No Overlay Active (Map View)');
     }
