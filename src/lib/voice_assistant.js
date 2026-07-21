@@ -1,8 +1,12 @@
 /**
  * Samudra — Thalassa AI Voice Assistant
  * A context-aware marine voice bot using free browser-native Web Speech APIs.
- * No API keys. No external AI services. 100% client-side.
+ * Groq LLM calls are proxied through the FastAPI backend — the API key never
+ * leaves the server.
  */
+
+// In dev, Vite runs on :3001 and FastAPI on :8000. In production they share the same origin.
+const API_BASE = import.meta.env.DEV ? 'http://localhost:8000' : '';
 
 // ─── Proactive Questions ──────────────────────────────────────────────────────
 const PROACTIVE_QUESTIONS = [
@@ -189,15 +193,6 @@ export class SamudraAssistant {
   // ── Intent Processing ─────────────────────────────────────────────────────
 
   async _processInput(text) {
-    const apiKey = import.meta.env.VITE_GROQ_API_KEY;
-    
-    if (!apiKey) {
-      const response = "Groq API key not found. Please add VITE_GROQ_API_KEY to the .env file.";
-      this._addMessage('bot', response);
-      this.speak(response);
-      return;
-    }
-
     try {
       // Indicate we are thinking
       const statusTextElement = document.getElementById('samudra-status-text');
@@ -222,12 +217,9 @@ IMPORTANT INSTRUCTIONS:
 - If the user is in distress, reports an emergency, or asks for rescue, you MUST include the exact string "[ACTION: EMERGENCY]" in your response. This will trigger a visual SOS UI overlay on the user's screen.
 - Never mention that you are an AI or language model. Act as the vessel's intelligent marine assistant.`;
 
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      const response = await fetch(`${API_BASE}/api/chat`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'llama-3.3-70b-versatile',
           messages: [
@@ -239,7 +231,7 @@ IMPORTANT INSTRUCTIONS:
       });
 
       if (!response.ok) {
-        throw new Error(`Groq API error: ${response.status}`);
+        throw new Error(`Backend error: ${response.status}`);
       }
 
       const data = await response.json();

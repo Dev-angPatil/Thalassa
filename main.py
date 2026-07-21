@@ -1,13 +1,19 @@
-from fastapi import FastAPI, Query, Request, Response
+from fastapi import FastAPI, Query, Request, Response, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+from typing import List, Optional
 import pandas as pd
 import numpy as np
 from sklearn.cluster import DBSCAN
 from scipy.spatial import ConvexHull
 import httpx
 import os
-app = FastAPI(title="Matsya Drishti Fish Clustering API")
+
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
+
+app = FastAPI(title="Matsya Drishti API")
 
 # Enable CORS for development
 app.add_middleware(
@@ -119,6 +125,44 @@ def get_fish_clusters(species: str = "sardine", month: int = 7):
         })
         
     return {"clusters": clusters}
+
+# ─── Groq Chat Proxy ─────────────────────────────────────────────────────────
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+class ChatRequest(BaseModel):
+    messages: List[ChatMessage]
+    model: Optional[str] = "llama-3.3-70b-versatile"
+    temperature: Optional[float] = 0.3
+
+@app.post("/api/chat")
+async def chat_proxy(body: ChatRequest):
+    """Proxy Groq LLM calls server-side so the API key is never exposed to the browser."""
+    if not GROQ_API_KEY:
+        raise HTTPException(status_code=503, detail="AI service is not configured.")
+
+    payload = {
+        "model": body.model,
+        "messages": [m.dict() for m in body.messages],
+        "temperature": body.temperature,
+    }
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        resp = await client.post(
+            GROQ_API_URL,
+            json=payload,
+            headers={
+                "Authorization": f"Bearer {GROQ_API_KEY}",
+                "Content-Type": "application/json",
+            },
+        )
+
+    if resp.status_code != 200:
+        raise HTTPException(status_code=resp.status_code, detail="Upstream AI error.")
+
+    return resp.json()
 
 @app.get("/erddap/{path:path}")
 async def proxy_erddap(path: str, request: Request):
