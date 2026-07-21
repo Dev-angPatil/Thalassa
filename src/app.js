@@ -6,6 +6,7 @@
 import { KERALA_COASTLINE, FISHING_HARBORS, CONSERVATION_ZONES } from './data/kerala_spatial.js';
 import { generateDigitalTwinGrid, calculateOptimizedRoute, getDistanceKM } from './lib/data_engine.js';
 import { fetchIncoisErddapData, fetchOpenMeteoForecast } from './lib/api_client.js';
+import { SamudraAssistant } from './lib/voice_assistant.js';
 
 // Open-Meteo Cache & Debounce Globals
 const openMeteoCache = new Map();
@@ -25,6 +26,8 @@ let optimizedRoute = null;
 let isPlaying = false;
 let playInterval = null;
 let map = null; // Leaflet map instance
+let samudra = null; // Samudra AI Voice Assistant instance
+let lastWeatherData = null; // Cache last weather data for Samudra
 
 // Animation helpers
 let pulseState = 0;
@@ -252,6 +255,9 @@ function init() {
   currentTimeMode = 'simulation';
   switchTimeMode('realtime');
   
+  // Initialize Samudra AI Voice Assistant
+  initSamudra();
+
   // Start the animation frame loop
   requestAnimationFrame(tick);
 }
@@ -1249,6 +1255,7 @@ async function fetchAndCacheForecast(lat, lng, cacheKey) {
     const data = await fetchOpenMeteoForecast(lat, lng);
     if (data) {
       openMeteoCache.set(cacheKey, data);
+      lastWeatherData = data; // Store for Samudra
       if (lastHoveredCell && `${lastHoveredCell.lat.toFixed(1)}_${lastHoveredCell.lng.toFixed(1)}` === cacheKey) {
         displayForecastData(data);
       }
@@ -1606,6 +1613,249 @@ function showToast(message, type = 'default') {
 
 // Trigger initial build setup on window load
 window.addEventListener('load', init);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SAMUDRA AI VOICE ASSISTANT — Integration
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Returns the current live state of the Thalassa app for Samudra to read.
+ */
+function getThalassaState() {
+  const speciesSelect = document.getElementById('species-selector');
+  const portSelect = document.getElementById('port-selector');
+
+  // Find the latest weather data from the cache
+  let weatherCache = lastWeatherData || null;
+  if (!weatherCache) {
+    // Try to get from openMeteoCache for current hovered/selected cell
+    const refCell = selectedCell || hoveredCell;
+    if (refCell) {
+      const cacheKey = `${refCell.lat.toFixed(1)}_${refCell.lng.toFixed(1)}`;
+      if (openMeteoCache.has(cacheKey)) {
+        weatherCache = openMeteoCache.get(cacheKey);
+      }
+    }
+  }
+
+  return {
+    gridData: gridData,
+    selectedCell: selectedCell,
+    hoveredCell: hoveredCell,
+    optimizedRoute: optimizedRoute,
+    selectedPort: portSelect ? portSelect.value : selectedPort,
+    selectedSpecies: speciesSelect ? speciesSelect.value : 'sardine',
+    currentMode: currentMode,
+    dayOfYear: dayOfYear,
+    weatherCache: weatherCache,
+    liveData: liveData
+  };
+}
+
+/**
+ * Initialize Samudra and wire up all UI interactions
+ */
+function initSamudra() {
+  samudra = new SamudraAssistant();
+  samudra.setStateProvider(getThalassaState);
+
+  // ── DOM References ──
+  const fab = document.getElementById('samudra-fab');
+  const panel = document.getElementById('samudra-panel');
+  const closeBtn = document.getElementById('samudra-close-btn');
+  const messagesDiv = document.getElementById('samudra-messages');
+  const textInput = document.getElementById('samudra-text-input');
+  const sendBtn = document.getElementById('samudra-send-btn');
+  const micBtn = document.getElementById('samudra-mic-btn');
+  const waveform = document.getElementById('samudra-waveform');
+  const statusDot = document.getElementById('samudra-status-dot');
+  const statusText = document.getElementById('samudra-status-text');
+  const fabIconMic = document.getElementById('samudra-fab-icon-mic');
+  const fabIconClose = document.getElementById('samudra-fab-icon-close');
+  const chips = document.querySelectorAll('.samudra-chip');
+
+  let panelOpen = false;
+  let hasGreeted = false;
+
+  // ── Drag Logic for Panel ──
+  const header = panel.querySelector('.samudra-header');
+  let isDragging = false;
+  let startX, startY, initialLeft, initialTop;
+
+  header.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    const rect = panel.getBoundingClientRect();
+    initialLeft = rect.left;
+    initialTop = rect.top;
+    
+    // Switch to absolute positioning so it follows mouse exactly
+    panel.style.left = `${initialLeft}px`;
+    panel.style.top = `${initialTop}px`;
+    panel.style.bottom = 'auto';
+    panel.style.right = 'auto';
+    panel.style.margin = '0';
+    // Temporarily disable transitions so it doesn't lag while dragging
+    panel.style.transition = 'none';
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    panel.style.left = `${initialLeft + dx}px`;
+    panel.style.top = `${initialTop + dy}px`;
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (isDragging) {
+      isDragging = false;
+      // Re-enable transition for smooth closing/opening
+      panel.style.transition = 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)';
+    }
+  });
+
+  // ── Render a message bubble ──
+  function renderMessage(msg) {
+    const bubble = document.createElement('div');
+    bubble.className = `samudra-msg ${msg.sender}`;
+    if (msg.type === 'emergency') bubble.classList.add('emergency');
+    if (msg.type === 'warning') bubble.classList.add('warning');
+
+    const timeStr = msg.timestamp.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+    bubble.innerHTML = `
+      <div>${msg.text}</div>
+      <div class="samudra-msg-time">${timeStr}</div>
+    `;
+    messagesDiv.appendChild(bubble);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  }
+
+  // ── Message callback ──
+  samudra.onMessage = (msg) => {
+    renderMessage(msg);
+    // Auto-open panel on emergency
+    if (msg.type === 'emergency' && !panelOpen) {
+      togglePanel(true);
+    }
+  };
+
+  // ── State change callback ──
+  samudra.onStateChange = (state) => {
+    // Update waveform
+    if (state.isListening) {
+      waveform.classList.add('active');
+      micBtn.classList.add('listening');
+      statusDot.className = 'samudra-status-dot listening';
+      statusText.textContent = 'LISTENING...';
+    } else if (state.isSpeaking) {
+      waveform.classList.add('active');
+      micBtn.classList.remove('listening');
+      statusDot.className = 'samudra-status-dot speaking';
+      statusText.textContent = 'SPEAKING...';
+    } else {
+      waveform.classList.remove('active');
+      micBtn.classList.remove('listening');
+      statusDot.className = 'samudra-status-dot';
+      statusText.textContent = 'IDLE';
+    }
+  };
+
+  // ── Toggle panel ──
+  function togglePanel(forceOpen) {
+    panelOpen = forceOpen !== undefined ? forceOpen : !panelOpen;
+    if (panelOpen) {
+      panel.style.display = 'flex';
+      // Trigger reflow for animation
+      requestAnimationFrame(() => {
+        panel.classList.add('open');
+      });
+      fab.classList.add('active');
+      fabIconMic.style.display = 'none';
+      fabIconClose.style.display = 'block';
+
+      if (!hasGreeted) {
+        hasGreeted = true;
+        samudra.greet();
+        samudra.startEmergencyMonitor();
+      }
+    } else {
+      panel.classList.remove('open');
+      fab.classList.remove('active');
+      fabIconMic.style.display = 'block';
+      fabIconClose.style.display = 'none';
+      setTimeout(() => {
+        if (!panelOpen) panel.style.display = 'none';
+      }, 350);
+    }
+  }
+
+  // ── Event Listeners ──
+  fab.addEventListener('click', () => togglePanel());
+  closeBtn.addEventListener('click', () => togglePanel(false));
+
+  // Quick action chips
+  chips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      const query = chip.getAttribute('data-query');
+      if (query) {
+        samudra.sendText(query);
+      }
+    });
+  });
+
+  // Text input — send on Enter
+  textInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && textInput.value.trim()) {
+      samudra.sendText(textInput.value.trim());
+      textInput.value = '';
+    }
+  });
+
+  // Send button
+  sendBtn.addEventListener('click', () => {
+    if (textInput.value.trim()) {
+      samudra.sendText(textInput.value.trim());
+      textInput.value = '';
+    }
+  });
+
+  // Mic button — toggle listening
+  micBtn.addEventListener('click', () => {
+    if (samudra.isListening) {
+      samudra.stopListening();
+    } else {
+      samudra.startListening();
+    }
+  });
+
+  // ── Emergency Call Overlay ──
+  const emergencyOverlay = document.getElementById('emergency-overlay');
+  const emergencyClose = document.getElementById('emergency-close');
+  const emergencyDangerText = document.getElementById('emergency-danger-text');
+
+  samudra.onEmergencyCall = (data) => {
+    // Show the full-screen emergency overlay
+    if (emergencyOverlay) {
+      // Update danger text
+      if (data.dangers && data.dangers.length > 0) {
+        emergencyDangerText.textContent = data.dangers.join(' • ');
+      } else {
+        emergencyDangerText.textContent = 'Dangerous sea conditions detected — call for assistance';
+      }
+      emergencyOverlay.style.display = 'flex';
+    }
+  };
+
+  if (emergencyClose) {
+    emergencyClose.addEventListener('click', () => {
+      emergencyOverlay.style.display = 'none';
+    });
+  }
+
+  console.log('[Thalassa] Samudra AI Voice Assistant initialized.');
+}
 
 // Floating HTML Map Legend Population functions
 function updateMapLegend() {
