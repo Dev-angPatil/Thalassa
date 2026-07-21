@@ -3,3 +3,5 @@ uvicorn
 pandas
 scipy
 scikit-learn
+httpx
+
