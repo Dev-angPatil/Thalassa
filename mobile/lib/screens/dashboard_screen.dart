@@ -146,8 +146,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           // Flutter Map View (Leaflet clone)
           FlutterMap(
             options: MapOptions(
-              center: const LatLng(10.0, 75.9),
-              zoom: 8,
+              initialCenter: const LatLng(10.0, 75.9),
+              initialZoom: 8,
               onTap: (tapPosition, point) {
                 _checkLocationAlerts(point);
               },
@@ -169,16 +169,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     width: 32,
                     height: 32,
                     point: _vesselLocation,
-                    builder: (ctx) => Stack(
+                    child: Stack(
                       alignment: Alignment.center,
                       children: [
                         // Pulse glow ring
                         Container(
                           width: 24,
                           height: 24,
-                          decoration: BoxDecoration(
+                          decoration: const BoxDecoration(
                             shape: BoxShape.circle,
-                            color: const Color(0xFF1863dc).withOpacity(0.4),
+                            color: Color.fromRGBO(24, 99, 220, 0.4),
                           ),
                         ),
                         // Inner core
@@ -245,7 +245,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               children: [
                 // Info HUD
                 Card(
-                  color: const Color(0xFF181a20).withOpacity(0.95),
+                  color: const Color.fromRGBO(24, 26, 32, 0.95),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                     side: const BorderSide(color: Color(0xFF282b35), width: 1),

@@ -23,7 +23,6 @@ class MatsyaDrishtiApp extends StatelessWidget {
           secondary: Color(0xFF1863dc), // Action Blue
           error: Color(0xFFff7759), // Coral Warning/Error
           surface: Color(0xFF181a20), // Dark surface cards
-          background: Color(0xFF0d0e12),
         ),
         textTheme: const TextTheme(
           titleLarge: TextStyle(

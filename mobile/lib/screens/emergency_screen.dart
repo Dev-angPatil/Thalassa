@@ -47,8 +47,8 @@ class EmergencyScreen extends StatelessWidget {
                   height: 90,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: const Color(0xFFff7759).withOpacity(0.08),
-                    border: Border.all(color: const Color(0xFFff7759).withOpacity(0.3), width: 2),
+                    color: const Color.fromRGBO(255, 119, 89, 0.08),
+                    border: Border.all(color: const Color.fromRGBO(255, 119, 89, 0.3), width: 2),
                   ),
                   child: const Icon(
                     Icons.contact_phone_rounded,
@@ -62,7 +62,7 @@ class EmergencyScreen extends StatelessWidget {
               
               const Text(
                 'DISTRESS SIGNAL OVERRIDE',
-                textAlign: Center,
+                textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Color(0xFFff7759),
                   fontWeight: FontWeight.bold,
@@ -73,7 +73,7 @@ class EmergencyScreen extends StatelessWidget {
               const SizedBox(height: 8),
               const Text(
                 'Select any authority below to launch a single-tap direct satellite/cell emergency call.',
-                textAlign: Center,
+                textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.white60,
                   fontSize: 12,
